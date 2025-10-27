@@ -58,8 +58,26 @@ impl Default for Color {
 }
 
 impl Color {
+    pub fn from_rgb(rgb: [u8; 3]) -> Self {
+        Self {
+            r: rgb[0],
+            g: rgb[1],
+            b: rgb[2],
+            a: 255,
+        }
+    }
+
     pub fn into_rgb(self) -> [u8; 3] {
         [self.r, self.g, self.b]
+    }
+
+    pub fn from_rgba(rgba: [u8; 4]) -> Self {
+        Self {
+            r: rgba[0],
+            g: rgba[1],
+            b: rgba[2],
+            a: rgba[3],
+        }
     }
 
     pub fn into_rgba(self) -> [u8; 4] {
@@ -198,50 +216,6 @@ impl fmt::Display for Color {
     }
 }
 
-impl From<(u8, u8, u8)> for Color {
-    fn from(value: (u8, u8, u8)) -> Self {
-        Self {
-            r: value.0,
-            g: value.1,
-            b: value.2,
-            a: 255,
-        }
-    }
-}
-
-impl From<(u8, u8, u8, u8)> for Color {
-    fn from(value: (u8, u8, u8, u8)) -> Self {
-        Self {
-            r: value.0,
-            g: value.1,
-            b: value.2,
-            a: value.3,
-        }
-    }
-}
-
-impl From<[u8; 3]> for Color {
-    fn from(value: [u8; 3]) -> Self {
-        Self {
-            r: value[0],
-            g: value[1],
-            b: value[2],
-            a: 255,
-        }
-    }
-}
-
-impl From<[u8; 4]> for Color {
-    fn from(value: [u8; 4]) -> Self {
-        Self {
-            r: value[0],
-            g: value[1],
-            b: value[2],
-            a: value[3],
-        }
-    }
-}
-
 // What to build (in sequence)
 
 // Core type & representations
@@ -257,8 +231,6 @@ impl From<[u8; 4]> for Color {
 // hsl(210 50% 40% / 0.7) (you’ll need HSL↔RGB).
 
 // (Optional) hwb(h w b / a).
-
-// Emit: to_hex_rgb(), to_hex_rgba(), and a Display that prints #RRGGBBAA.
 
 // Validation & ergonomics
 
