@@ -58,26 +58,17 @@ impl Default for Color {
 }
 
 impl Color {
-    fn decode(srgb: u8) -> f32 {
-        let srgb = srgb as f32;
-        if srgb <= 0.04045 {
-            srgb / 12.92
-        } else {
-            ((srgb + 0.055) / 1.055).powf(2.4)
-        }
+    pub fn into_rgb(self) -> [u8; 3] {
+        [self.r, self.g, self.b]
     }
 
-    pub fn rgb(r: u8, g: u8, b: u8) -> Self {
-        Self { r, g, b, a: 255 }
+    pub fn into_rgba(self) -> [u8; 4] {
+        [self.r, self.g, self.b, self.a]
     }
 
-    pub fn rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
-        Self { r, g, b, a }
-    }
+    // TODO: into_hex# methods
 
-    // TODO: to_hex# methods
-
-    pub fn hex3(hex3: &str) -> Result<Self, ParseIntError> {
+    pub fn from_hex3(hex3: &str) -> Result<Self, ParseIntError> {
         let mut hex6 = String::new();
 
         if let Some(stripped) = hex3.strip_prefix('#') {
@@ -92,10 +83,10 @@ impl Color {
             }
         }
 
-        Self::hex6(hex6.as_str())
+        Self::from_hex6(hex6.as_str())
     }
 
-    pub fn hex6(hex6: &str) -> Result<Self, ParseIntError> {
+    pub fn from_hex6(hex6: &str) -> Result<Self, ParseIntError> {
         if let Some(stripped) = hex6.strip_prefix('#') {
             Ok(Self {
                 r: stripped[0..2].parse::<u8>()?,
@@ -113,7 +104,7 @@ impl Color {
         }
     }
 
-    pub fn hex4(hex4: &str) -> Result<Self, ParseIntError> {
+    pub fn from_hex4(hex4: &str) -> Result<Self, ParseIntError> {
         let mut hex8 = String::new();
 
         if let Some(stripped) = hex4.strip_prefix('#') {
@@ -128,10 +119,10 @@ impl Color {
             }
         }
 
-        Self::hex8(hex8.as_str())
+        Self::from_hex8(hex8.as_str())
     }
 
-    pub fn hex8(hex8: &str) -> Result<Self, ParseIntError> {
+    pub fn from_hex8(hex8: &str) -> Result<Self, ParseIntError> {
         if let Some(stripped) = hex8.strip_prefix('#') {
             Ok(Self {
                 r: stripped[0..2].parse::<u8>()?,
@@ -200,3 +191,237 @@ impl fmt::Display for Color {
         write!(f, "#{r:02x}{g:02x}{b:02x}{a:02x}")
     }
 }
+
+impl From<(u8, u8, u8)> for Color {
+    fn from(value: (u8, u8, u8)) -> Self {
+        Self {
+            r: value.0,
+            g: value.1,
+            b: value.2,
+            a: 255,
+        }
+    }
+}
+
+impl From<(u8, u8, u8, u8)> for Color {
+    fn from(value: (u8, u8, u8, u8)) -> Self {
+        Self {
+            r: value.0,
+            g: value.1,
+            b: value.2,
+            a: value.3,
+        }
+    }
+}
+
+impl From<[u8; 3]> for Color {
+    fn from(value: [u8; 3]) -> Self {
+        Self {
+            r: value[0],
+            g: value[1],
+            b: value[2],
+            a: 255,
+        }
+    }
+}
+
+impl From<[u8; 4]> for Color {
+    fn from(value: [u8; 4]) -> Self {
+        Self {
+            r: value[0],
+            g: value[1],
+            b: value[2],
+            a: value[3],
+        }
+    }
+}
+
+// What to build (in sequence)
+
+// Core type & representations
+
+// Color as sRGB 8-bit, straight alpha (r,g,b,a : u8).
+
+// Parsing & printing
+
+// CSS funcs (modern syntax):
+
+// rgb(255 0 0), rgb(255 0 0 / 0.5), allow commas too.
+
+// hsl(210 50% 40% / 0.7) (you’ll need HSL↔RGB).
+
+// (Optional) hwb(h w b / a).
+
+// Emit: to_hex_rgb(), to_hex_rgba(), and a Display that prints #RRGGBBAA.
+
+// Validation & ergonomics
+
+// Accept integer 0–255 or percentages (e.g., rgb(100% 0% 0%)).
+
+// Alpha accepts 0..1 floats or 0..255 ints.
+
+// Case-insensitive; trim whitespace; good errors.
+
+// Conversions
+
+// sRGB ↔ linear (for correct math).
+
+// sRGB ↔ HSL (for creator-friendly tweaks).
+
+// (Optional but recommended later): sRGB ↔ OKLab/OKLCH for perceptual interpolation.
+
+// Compositing
+
+// Porter–Duff “over” (correct: do math in linear, not sRGB).
+
+// Fast path: an approximate sRGB blend for previews.
+
+// (Optional) other blend modes: multiply, screen, overlay, soft-light.
+
+// Interpolation
+
+// lerp_srgb(a,b,t) (UI-ish).
+
+// lerp_linear(a,b,t) (physically sane for fades).
+
+// (Bonus) lerp_oklch to avoid hue/brightness drift in gradients.
+
+// Utilities
+
+// with_alpha(a), opacity(); lighten/darken; clamp.
+
+// relative_luminance() and contrast ratio for accessibility checks.
+
+// (Optional) named colors table ("rebeccapurple").
+
+// Testing
+
+// Unit tests for every parse/print form.
+
+// Round-trip tests (e.g., hex→color→hex).
+
+// Property tests (random valid/invalid strings).
+
+// Known vectors for HSL↔RGB and luminance/contrast.
+
+// Canonical formulas you’ll need
+// sRGB ↔ linear light (D65, IEC 61966-2-1)
+
+// For channel C' in sRGB (0–1) and linear C (0–1):
+
+// Decode (sRGB → linear):
+
+// if C' ≤ 0.04045: C = C' / 12.92
+
+// else: C = ((C' + 0.055) / 1.055) ^ 2.4
+// W3C
+// +2
+// Wikipedia
+// +2
+
+// Encode (linear → sRGB):
+
+// if C ≤ 0.0031308: C' = 12.92 * C
+
+// else: C' = 1.055 * C^(1/2.4) − 0.055
+// Color.org
+
+// Tip: store bytes (0–255), convert to floats only for math. Use f32; f64 only if you need exactness.
+
+// HSL ↔ RGB (CSS)
+
+// H in degrees [0,360), S & L as fractions [0,1].
+
+// Implement the standard helper hue2rgb(p, q, t); the CSS Color spec/MDN has precise steps and the modern function syntax (space-separated, / alpha).
+// W3C
+// +2
+// MDN Web Docs
+// +2
+
+// OKLab / OKLCH (optional, for better gradients)
+
+// Use Björn Ottosson’s definitions; convert sRGB→linear→OKLab→(interpolate)→back. Great for hue-stable ramps and UI themes.
+// Björn Ottosson
+// +1
+
+// Porter–Duff compositing (“over”)
+
+// With premultiplied RGBA (rgb already multiplied by a), the classic “over”:
+
+// A_out = A_fg + A_bg * (1 − A_fg)
+
+// RGB_out = RGB_fg + RGB_bg * (1 − A_fg)
+
+// If you store straight alpha, either convert to premultiplied for math or use the straight-alpha form (a bit longer). Do math in linear RGB.
+// Keith P.
+// +1
+
+// Common blend modes (straight alpha; do in linear)
+
+// Let s = source (fg), d = dest (bg), both unpremultiplied linear RGB:
+
+// Multiply: out = s * d
+
+// Screen: out = 1 − (1 − s) * (1 − d)
+
+// Overlay: out = (d < 0.5) ? (2*s*d) : (1 − 2*(1 − s)*(1 − d))
+// Then compose with alpha using Porter–Duff.
+
+// Relative luminance & contrast ratio (WCAG 2.x)
+
+// For linear RGB R,G,B (decoded from sRGB):
+
+// L = 0.2126*R + 0.7152*G + 0.0722*B
+
+// Contrast ratio between L1 (lighter) and L2 (darker):
+// CR = (L1 + 0.05) / (L2 + 0.05)
+// Targets: 4.5:1 (normal text), 3:1 (large text).
+// W3C
+// +1
+
+// Implementation tips (so you get it right, fast)
+
+// Parser shape:
+
+// Strip whitespace → detect # vs rgb(/hsl(/hwb(.
+
+// Hex: accept 3/4/6/8 nibbles; expand 3/4 to 6/8 via x → x*17.
+
+// CSS: support commas or spaces, and / alpha per Color Level 4. Percentages allowed.
+// W3C
+// +1
+
+// Alpha semantics: keep straight alpha externally (what creators expect). Convert to premultiplied internally when blending.
+
+// Interpolation defaults:
+
+// UI theming: lerp_oklch or lerp_linear.
+
+// “Glow/fade”: linear + premultiplied for smooth edges.
+
+// Performance:
+
+// Avoid heap allocs; parse into stack values.
+
+// Keep a tiny LUT for sRGB↔linear (e.g., 4096 entries) if you want speed.
+
+// Batch blends per scanline; consider SIMD later.
+
+// APIs:
+
+// FromStr for parsing; Display for hex output.
+
+// TryFrom<&str> and From<(u8,u8,u8)> conveniences.
+
+// Feature-gate serde derives for config files.
+
+// Error type with specific variants: InvalidHex, InvalidFunc, OutOfRange, etc.
+
+// Testing:
+
+// Golden vectors for sRGB transfer (pick a few sample values).
+
+// Cross-check HSL↔RGB with MDN examples.
+// MDN Web Docs
+
+// WCAG examples: verify contrast of known pairs (e.g., pure black vs white = 21:1)
