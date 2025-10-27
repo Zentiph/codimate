@@ -1,0 +1,20 @@
+[package]
+name = "codimate"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "codimate"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.22", features = ["extension-module", "abi3-py39"] }
+image = "0.25.8"
+imageproc = "0.25.0"
+ab_glyph = "0.2"
+anyhow = "1.0"
+hex = "0.4"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
