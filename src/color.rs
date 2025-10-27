@@ -164,6 +164,64 @@ impl Color {
         format!("{:02x}{:02x}{:02x}{:02x}", self.r, self.g, self.b, self.a)
     }
 
+    pub fn from_hsl_f32(hsl: [f32; 3]) -> Self {
+        // solution from https://www.rapidtables.com/convert/color/hsl-to-rgb.html
+        let (mut h, s, l) = (hsl[0], hsl[1] / 100.0, hsl[2] / 100.0);
+        while h >= 360.0 {
+            h /= 360.0;
+        }
+
+        let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
+        let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
+        let m = l - c / 2.0;
+
+        let (r_prime, g_prime, b_prime) = match h {
+            0.0..60.0 => (c, x, 0.0),
+            60.0..120.0 => (x, c, 0.0),
+            120.0..180.0 => (0.0, c, x),
+            180.0..240.0 => (0.0, x, c),
+            240.0..300.0 => (x, 0.0, c),
+            300.0..360.0 => (c, 0.0, x),
+            _ => (c, x, 0.0), // exhaustive case cover, but will never happen due to h clamping earlier
+        };
+
+        Self {
+            r: ((r_prime + m) * 255.0 + 0.5).floor() as u8,
+            g: ((g_prime + m) * 255.0 + 0.5).floor() as u8,
+            b: ((b_prime + m) * 255.0 + 0.5).floor() as u8,
+            a: 255,
+        }
+    }
+
+    pub fn from_hsl_f64(hsl: [f64; 3]) -> Self {
+        // solution from https://www.rapidtables.com/convert/color/hsl-to-rgb.html
+        let (mut h, s, l) = (hsl[0], hsl[1] / 100.0, hsl[2] / 100.0);
+        while h >= 360.0 {
+            h /= 360.0;
+        }
+
+        let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
+        let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
+        let m = l - c / 2.0;
+
+        let (r_prime, g_prime, b_prime) = match h {
+            0.0..60.0 => (c, x, 0.0),
+            60.0..120.0 => (x, c, 0.0),
+            120.0..180.0 => (0.0, c, x),
+            180.0..240.0 => (0.0, x, c),
+            240.0..300.0 => (x, 0.0, c),
+            300.0..360.0 => (c, 0.0, x),
+            _ => (c, x, 0.0), // exhaustive case cover, but will never happen due to h clamping earlier
+        };
+
+        Self {
+            r: ((r_prime + m) * 255.0 + 0.5).floor() as u8,
+            g: ((g_prime + m) * 255.0 + 0.5).floor() as u8,
+            b: ((b_prime + m) * 255.0 + 0.5).floor() as u8,
+            a: 255,
+        }
+    }
+
     // TODO: CSS function parsing
     // e.g. rgb(255 0 0), rgb(255 0 0 / 0.5), hsl(210 50% 40% / 0.7), etc
 
@@ -187,7 +245,7 @@ impl Color {
     }
 
     // decode sRGB -> linear light (D65, IEC 61966-2-1)
-    pub fn to_linear_f32(self) -> [f32; 4] {
+    pub fn into_linear_f32(self) -> [f32; 4] {
         [
             decode_srgb_f32(self.r),
             decode_srgb_f32(self.g),
@@ -196,7 +254,7 @@ impl Color {
         ]
     }
 
-    pub fn to_linear_f64(self) -> [f64; 4] {
+    pub fn into_linear_f64(self) -> [f64; 4] {
         [
             decode_srgb_f64(self.r),
             decode_srgb_f64(self.g),
@@ -216,6 +274,7 @@ impl fmt::Display for Color {
     }
 }
 
+// TODO
 // What to build (in sequence)
 
 // Core type & representations
@@ -241,8 +300,6 @@ impl fmt::Display for Color {
 // Case-insensitive; trim whitespace; good errors.
 
 // Conversions
-
-// sRGB ↔ linear (for correct math).
 
 // sRGB ↔ HSL (for creator-friendly tweaks).
 
