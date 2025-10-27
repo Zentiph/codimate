@@ -25,17 +25,17 @@ fn decode_srgb_f64(srgb: u8) -> f64 {
 
 fn encode_srgb_f32(l: f32) -> u8 {
     if l <= 0.0031308 {
-        (12.92 * l + 0.5).floor() as u8
+        ((12.92 * l) * 255.0 + 0.5).floor() as u8
     } else {
-        (1.055 * l.powf(1.0 / 2.4) - 0.055 + 0.5).floor() as u8
+        ((1.055 * l.powf(1.0 / 2.4) - 0.055) * 255.0 + 0.5).floor() as u8
     }
 }
 
 fn encode_srgb_f64(l: f64) -> u8 {
     if l <= 0.0031308 {
-        (12.92 * l + 0.5).floor() as u8
+        ((12.92 * l) * 255.0 + 0.5).floor() as u8
     } else {
-        (1.055 * l.powf(1.0 / 2.4) - 0.055 + 0.5).floor() as u8
+        ((1.055 * l.powf(1.0 / 2.4) - 0.055) * 255.0 + 0.5).floor() as u8
     }
 }
 
@@ -144,6 +144,7 @@ impl Color {
         let g = blend(self.g, dst.g);
         let b = blend(self.b, dst.b);
         let a = (out_a * 255.0 + 0.5).floor() as u8;
+
         dst.r = r;
         dst.g = g;
         dst.b = b;
@@ -547,7 +548,8 @@ impl fmt::Display for Color {
 
 // Core type & representations
 
-// Color as sRGB 8-bit, straight alpha (r,g,b,a : u8).
+// Color as sRGB 8-bit, straight alpha (r,g,b,a : u8). [mostly done. test that this works]
+
 
 // Parsing & printing
 
@@ -559,6 +561,7 @@ impl fmt::Display for Color {
 
 // (Optional) hwb(h w b / a).
 
+
 // Validation & ergonomics
 
 // Accept integer 0–255 or percentages (e.g., rgb(100% 0% 0%)).
@@ -567,25 +570,25 @@ impl fmt::Display for Color {
 
 // Case-insensitive; trim whitespace; good errors.
 
+
 // Conversions
 
 // (Optional but recommended later): sRGB ↔ OKLab/OKLCH for perceptual interpolation.
 
+
 // Compositing
 
-// Porter–Duff “over” (correct: do math in linear, not sRGB).
+// Porter–Duff “over” (add a fix: do math in linear, not sRGB).
 
 // Fast path: an approximate sRGB blend for previews.
 
 // (Optional) other blend modes: multiply, screen, overlay, soft-light.
 
+
 // Interpolation
 
-// lerp_srgb(a,b,t) (UI-ish).
-
-// lerp_linear(a,b,t) (physically sane for fades).
-
 // (Bonus) lerp_oklch to avoid hue/brightness drift in gradients.
+
 
 // Utilities
 
@@ -595,20 +598,12 @@ impl fmt::Display for Color {
 
 // (Optional) named colors table ("rebeccapurple").
 
-// Testing
 
-// Unit tests for every parse/print form.
-
-// Round-trip tests (e.g., hex→color→hex).
-
-// Property tests (random valid/invalid strings).
-
-// Known vectors for HSL↔RGB and luminance/contrast.
-
-// Canonical formulas you’ll need
+// Canonical needed
 // sRGB ↔ linear light (D65, IEC 61966-2-1)
 
 // For channel C' in sRGB (0–1) and linear C (0–1):
+
 
 // Decode (sRGB → linear):
 
@@ -619,6 +614,7 @@ impl fmt::Display for Color {
 // +2
 // Wikipedia
 // +2
+
 
 // Encode (linear → sRGB):
 
@@ -639,11 +635,13 @@ impl fmt::Display for Color {
 // MDN Web Docs
 // +2
 
+
 // OKLab / OKLCH (optional, for better gradients)
 
-// Use Björn Ottosson’s definitions; convert sRGB→linear→OKLab→(interpolate)→back. Great for hue-stable ramps and UI themes.
+// Use Björn Ottosson’s definitions; convert sRGB → linear → OKLab → (interpolate) → back. Great for hue-stable ramps and UI themes.
 // Björn Ottosson
 // +1
+
 
 // Porter–Duff compositing (“over”)
 
@@ -657,6 +655,7 @@ impl fmt::Display for Color {
 // Keith P.
 // +1
 
+
 // Common blend modes (straight alpha; do in linear)
 
 // Let s = source (fg), d = dest (bg), both unpremultiplied linear RGB:
@@ -667,6 +666,7 @@ impl fmt::Display for Color {
 
 // Overlay: out = (d < 0.5) ? (2*s*d) : (1 − 2*(1 − s)*(1 − d))
 // Then compose with alpha using Porter–Duff.
+
 
 // Relative luminance & contrast ratio (WCAG 2.x)
 
@@ -680,7 +680,8 @@ impl fmt::Display for Color {
 // W3C
 // +1
 
-// Implementation tips (so you get it right, fast)
+
+// Implementation tips (so this is done right and fast)
 
 // Parser shape:
 
@@ -694,19 +695,22 @@ impl fmt::Display for Color {
 
 // Alpha semantics: keep straight alpha externally (what creators expect). Convert to premultiplied internally when blending.
 
+
 // Interpolation defaults:
 
 // UI theming: lerp_oklch or lerp_linear.
 
 // “Glow/fade”: linear + premultiplied for smooth edges.
 
+
 // Performance:
 
 // Avoid heap allocs; parse into stack values.
 
-// Keep a tiny LUT for sRGB↔linear (e.g., 4096 entries) if you want speed.
+// Keep a tiny LUT for sRGB ↔ linear (e.g., 4096 entries) if you want speed.
 
 // Batch blends per scanline; consider SIMD later.
+
 
 // APIs:
 
@@ -718,7 +722,16 @@ impl fmt::Display for Color {
 
 // Error type with specific variants: InvalidHex, InvalidFunc, OutOfRange, etc.
 
+
 // Testing:
+
+// Unit tests for every parse/print form.
+
+// Round-trip tests (e.g., hex→color→hex).
+
+// Property tests (random valid/invalid strings).
+
+// Known vectors for HSL↔RGB and luminance/contrast.
 
 // Golden vectors for sRGB transfer (pick a few sample values).
 
