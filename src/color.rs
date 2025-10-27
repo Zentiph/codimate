@@ -2,7 +2,8 @@
 
 // TODO docs
 
-use std::{fmt, num::ParseIntError};
+use core::f64;
+use std::{cmp, fmt, num::ParseIntError};
 
 fn decode_srgb_f32(srgb: u8) -> f32 {
     let srgb = (srgb as f32) / 255.0;
@@ -167,9 +168,7 @@ impl Color {
     pub fn from_hsl_f32(hsl: [f32; 3]) -> Self {
         // solution from https://www.rapidtables.com/convert/color/hsl-to-rgb.html
         let (mut h, s, l) = (hsl[0], hsl[1] / 100.0, hsl[2] / 100.0);
-        while h >= 360.0 {
-            h /= 360.0;
-        }
+        h = h.rem_euclid(360.0);
 
         let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
         let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
@@ -196,9 +195,7 @@ impl Color {
     pub fn from_hsl_f64(hsl: [f64; 3]) -> Self {
         // solution from https://www.rapidtables.com/convert/color/hsl-to-rgb.html
         let (mut h, s, l) = (hsl[0], hsl[1] / 100.0, hsl[2] / 100.0);
-        while h >= 360.0 {
-            h /= 360.0;
-        }
+        h = h.rem_euclid(360.0);
 
         let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
         let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
@@ -220,6 +217,185 @@ impl Color {
             b: ((b_prime + m) * 255.0 + 0.5).floor() as u8,
             a: 255,
         }
+    }
+
+    pub fn from_hsla_f32(hsla: [f32; 4]) -> Self {
+        // solution from https://www.rapidtables.com/convert/color/hsl-to-rgb.html
+        let (mut h, s, l) = (hsla[0], hsla[1] / 100.0, hsla[2] / 100.0);
+        h = h.rem_euclid(360.0);
+
+        let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
+        let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
+        let m = l - c / 2.0;
+
+        let (r_prime, g_prime, b_prime) = match h {
+            0.0..60.0 => (c, x, 0.0),
+            60.0..120.0 => (x, c, 0.0),
+            120.0..180.0 => (0.0, c, x),
+            180.0..240.0 => (0.0, x, c),
+            240.0..300.0 => (x, 0.0, c),
+            300.0..360.0 => (c, 0.0, x),
+            _ => (c, x, 0.0), // exhaustive case cover, but will never happen due to h clamping earlier
+        };
+
+        Self {
+            r: ((r_prime + m) * 255.0 + 0.5).floor() as u8,
+            g: ((g_prime + m) * 255.0 + 0.5).floor() as u8,
+            b: ((b_prime + m) * 255.0 + 0.5).floor() as u8,
+            a: (hsla[3] * 255.0 + 0.5).floor() as u8,
+        }
+    }
+
+    pub fn from_hsla_f64(hsla: [f64; 4]) -> Self {
+        // solution from https://www.rapidtables.com/convert/color/hsl-to-rgb.html
+        let (mut h, s, l) = (hsla[0], hsla[1] / 100.0, hsla[2] / 100.0);
+
+        h = h.rem_euclid(360.0);
+
+        let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
+        let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
+        let m = l - c / 2.0;
+
+        let (r_prime, g_prime, b_prime) = match h {
+            0.0..60.0 => (c, x, 0.0),
+            60.0..120.0 => (x, c, 0.0),
+            120.0..180.0 => (0.0, c, x),
+            180.0..240.0 => (0.0, x, c),
+            240.0..300.0 => (x, 0.0, c),
+            300.0..360.0 => (c, 0.0, x),
+            _ => (c, x, 0.0), // exhaustive case cover, but will never happen due to h clamping earlier
+        };
+
+        Self {
+            r: ((r_prime + m) * 255.0 + 0.5).floor() as u8,
+            g: ((g_prime + m) * 255.0 + 0.5).floor() as u8,
+            b: ((b_prime + m) * 255.0 + 0.5).floor() as u8,
+            a: (hsla[3] * 255.0 + 0.5).floor() as u8,
+        }
+    }
+
+    pub fn into_hsl_f32(self) -> [f32; 3] {
+        // solution from https://www.rapidtables.com/convert/color/rgb-to-hsl.html
+        let r_prime = (self.r as f32) / 255.0;
+        let g_prime = (self.g as f32) / 255.0;
+        let b_prime = (self.b as f32) / 255.0;
+
+        let c_max = r_prime.max(g_prime).max(b_prime);
+        let c_min = r_prime.min(g_prime).min(b_prime);
+        let delta = c_max - c_min;
+
+        let h = if delta == 0.0 {
+            0.0
+        } else {
+            match c_max {
+                _ if r_prime == c_max => 60.0 * ((g_prime - b_prime) / delta).rem_euclid(6.0),
+                _ if g_prime == c_max => 60.0 * ((b_prime - r_prime) / delta + 2.0),
+                _ => 60.0 * ((r_prime - g_prime) / delta + 4.0), // b_prime == c_max
+            }
+        };
+
+        let l = (c_max + c_min) / 2.0;
+
+        let s = if delta == 0.0 {
+            0.0
+        } else {
+            delta / (1.0 - (2.0 * l - 1.0).abs())
+        };
+
+        [h, s, l]
+    }
+
+    pub fn into_hsl_f64(self) -> [f64; 3] {
+        // solution from https://www.rapidtables.com/convert/color/rgb-to-hsl.html
+        let r_prime = (self.r as f64) / 255.0;
+        let g_prime = (self.g as f64) / 255.0;
+        let b_prime = (self.b as f64) / 255.0;
+
+        let c_max = r_prime.max(g_prime).max(b_prime);
+        let c_min = r_prime.min(g_prime).min(b_prime);
+        let delta = c_max - c_min;
+
+        let h = if delta == 0.0 {
+            0.0
+        } else {
+            match c_max {
+                _ if r_prime == c_max => 60.0 * ((g_prime - b_prime) / delta).rem_euclid(6.0),
+                _ if g_prime == c_max => 60.0 * ((b_prime - r_prime) / delta + 2.0),
+                _ => 60.0 * ((r_prime - g_prime) / delta + 4.0), // b_prime == c_max
+            }
+        };
+
+        let l = (c_max + c_min) / 2.0;
+
+        let s = if delta == 0.0 {
+            0.0
+        } else {
+            delta / (1.0 - (2.0 * l - 1.0).abs())
+        };
+
+        [h, s, l]
+    }
+
+    pub fn into_hsla_f32(self) -> [f32; 4] {
+        // solution from https://www.rapidtables.com/convert/color/rgb-to-hsl.html
+        let r_prime = (self.r as f32) / 255.0;
+        let g_prime = (self.g as f32) / 255.0;
+        let b_prime = (self.b as f32) / 255.0;
+
+        let c_max = r_prime.max(g_prime).max(b_prime);
+        let c_min = r_prime.min(g_prime).min(b_prime);
+        let delta = c_max - c_min;
+
+        let h = if delta == 0.0 {
+            0.0
+        } else {
+            match c_max {
+                _ if r_prime == c_max => 60.0 * ((g_prime - b_prime) / delta).rem_euclid(6.0),
+                _ if g_prime == c_max => 60.0 * ((b_prime - r_prime) / delta + 2.0),
+                _ => 60.0 * ((r_prime - g_prime) / delta + 4.0), // b_prime == c_max
+            }
+        };
+
+        let l = (c_max + c_min) / 2.0;
+
+        let s = if delta == 0.0 {
+            0.0
+        } else {
+            delta / (1.0 - (2.0 * l - 1.0).abs())
+        };
+
+        [h, s, l, (self.a as f32) / 255.0]
+    }
+
+    pub fn into_hsla_f64(self) -> [f64; 4] {
+        // solution from https://www.rapidtables.com/convert/color/rgb-to-hsl.html
+        let r_prime = (self.r as f64) / 255.0;
+        let g_prime = (self.g as f64) / 255.0;
+        let b_prime = (self.b as f64) / 255.0;
+
+        let c_max = r_prime.max(g_prime).max(b_prime);
+        let c_min = r_prime.min(g_prime).min(b_prime);
+        let delta = c_max - c_min;
+
+        let h = if delta == 0.0 {
+            0.0
+        } else {
+            match c_max {
+                _ if r_prime == c_max => 60.0 * ((g_prime - b_prime) / delta).rem_euclid(6.0),
+                _ if g_prime == c_max => 60.0 * ((b_prime - r_prime) / delta + 2.0),
+                _ => 60.0 * ((r_prime - g_prime) / delta + 4.0), // b_prime == c_max
+            }
+        };
+
+        let l = (c_max + c_min) / 2.0;
+
+        let s = if delta == 0.0 {
+            0.0
+        } else {
+            delta / (1.0 - (2.0 * l - 1.0).abs())
+        };
+
+        [h, s, l, (self.a as f64) / 255.0]
     }
 
     // TODO: CSS function parsing
