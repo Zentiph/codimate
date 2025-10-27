@@ -66,8 +66,6 @@ impl Color {
         [self.r, self.g, self.b, self.a]
     }
 
-    // TODO: into_hex# methods
-
     pub fn from_hex3(hex3: &str) -> Result<Self, ParseIntError> {
         let mut hex6 = String::new();
 
@@ -104,6 +102,10 @@ impl Color {
         }
     }
 
+    pub fn into_hex6(self) -> String {
+        format!("{:02x}{:02x}{:02x}", self.r, self.g, self.b)
+    }
+
     pub fn from_hex4(hex4: &str) -> Result<Self, ParseIntError> {
         let mut hex8 = String::new();
 
@@ -138,6 +140,10 @@ impl Color {
                 a: hex8[6..8].parse::<u8>()?,
             })
         }
+    }
+
+    pub fn into_hex8(self) -> String {
+        format!("{:02x}{:02x}{:02x}{:02x}", self.r, self.g, self.b, self.a)
     }
 
     // TODO: CSS function parsing
