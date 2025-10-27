@@ -39,6 +39,48 @@ fn encode_srgb_f64(l: f64) -> u8 {
     }
 }
 
+// added by noah: 10/27/25 2:50PM. u8, standard, and srgb interpolation. 
+// factor is distance: 0 = this color, 1 = other color.
+#[inline]
+pub fn lerp_u8(a: u8, b: u8, factor: u8) -> u8 {
+    // casting from u8 to u16 causes zero overhead
+    let factor = factor as u16;
+
+    let a = a as u16;
+    let b = b as u16;
+
+    // with this being u8: result = (a * (255 - factor) + b * factor + 127) / 255
+    ((a * (255 - factor) + b * factor + 127) / 255) as u8
+}
+
+// linear lerp -> converts rgb and a for both colors into 4 seperate linear values and lerps that way.
+pub fn lerp_linear(a: Color, b: Color, factor: f32) -> Color {
+    // clamping to 0-1 b/c inputs can't be trusted
+    let factor: f32 = factor.clamp(0.0, 1.0);
+
+    let a: [f32; 4] = a.into_linear_f32();
+    let b: [f32; 4] = b.into_linear_f32();
+    
+    Color::from_linear_f32([
+        a[0] + (b[0] - a[0]) * factor,
+        a[1] + (b[1] - a[1]) * factor,
+        a[2] + (b[2] - a[2]) * factor,
+        a[3] + (b[3] - a[3]) * factor,
+    ])
+}
+
+// sRGB lerp -> makes 1 color by combining rgb and a values for both colors.
+pub fn lerp_srgb(a: Color, b: Color, factor: f32) -> Color {
+    let factor = (factor * 255.0).round() as u8;
+    
+    Color {
+        r: lerp_u8(a.r, b.r, factor),
+        g: lerp_u8(a.g, b.g, factor),
+        b: lerp_u8(a.b, b.b, factor),
+        a: lerp_u8(a.a, b.a, factor),
+    }
+}
+
 // stores sRGB under the hood, with lots of conversion funcs
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Color {
