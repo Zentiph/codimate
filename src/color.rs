@@ -3,7 +3,7 @@
 // TODO docs
 
 use core::f64;
-use std::{cmp, fmt, num::ParseIntError};
+use std::{fmt, num::ParseIntError};
 
 fn decode_srgb_f32(srgb: u8) -> f32 {
     let srgb = (srgb as f32) / 255.0;
@@ -39,6 +39,7 @@ fn encode_srgb_f64(l: f64) -> u8 {
     }
 }
 
+// stores sRGB under the hood, with lots of conversion funcs
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Color {
     pub r: u8,
@@ -59,6 +60,55 @@ impl Default for Color {
 }
 
 impl Color {
+    // Porter-Duff "over" in linear space
+    // for speed over accuracy, use `over_srgb_fast`
+    // https://keithp.com/~keithp/porterduff/p253-porter.pdf
+    pub fn over(self, bg: Color) -> Color {
+        let fg = self.into_linear_f64();
+        let bg = bg.into_linear_f64();
+        let (fr, fg_, fb, fa) = (fg[0], fg[1], fg[2], fg[3]);
+        let (br, bgc, bb, ba) = (bg[0], bg[1], bg[2], bg[3]);
+
+        let out_a = fa + ba * (1.0 - fa);
+        let (out_r, out_g, out_b) = if out_a > 0.0 {
+            let r = (fr * fa + br * ba * (1.0 - fa)) / out_a;
+            let g = (fg_ * fa + bgc * ba * (1.0 - fa)) / out_a;
+            let b = (fb * fa + bb * ba * (1.0 - fa)) / out_a;
+            (r, g, b)
+        } else {
+            (0.0, 0.0, 0.0)
+        };
+
+        Color::from_linear_f64([out_r, out_g, out_b, out_a])
+    }
+
+    // Faster (but slightly less accurate) "over" in sRGB space.
+    pub fn over_srgb_fast(self, mut dst: Color) -> Color {
+        let sa = self.a as f32 / 255.0;
+        if sa <= 0.0 {
+            return dst;
+        }
+        let da = dst.a as f32 / 255.0;
+        let out_a = sa + da * (1.0 - sa);
+
+        let blend = |sc: u8, dc: u8| -> u8 {
+            let sc = sc as f32 / 255.0;
+            let dc = dc as f32 / 255.0;
+            let out = (sc * sa + dc * da * (1.0 - sa)) / out_a.max(1e-6);
+            (out * 255.0 + 0.5).floor() as u8
+        };
+
+        let r = blend(self.r, dst.r);
+        let g = blend(self.g, dst.g);
+        let b = blend(self.b, dst.b);
+        let a = (out_a * 255.0 + 0.5).floor() as u8;
+        dst.r = r;
+        dst.g = g;
+        dst.b = b;
+        dst.a = a;
+        dst
+    }
+
     pub fn from_rgb(rgb: [u8; 3]) -> Self {
         Self {
             r: rgb[0],
@@ -476,8 +526,6 @@ impl fmt::Display for Color {
 // Case-insensitive; trim whitespace; good errors.
 
 // Conversions
-
-// sRGB ↔ HSL (for creator-friendly tweaks).
 
 // (Optional but recommended later): sRGB ↔ OKLab/OKLCH for perceptual interpolation.
 
