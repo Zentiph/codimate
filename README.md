@@ -1,11 +1,12 @@
 # codimate
-codimate is an engine for programmatic code animations, designed for creating visualizations for programming videos.
+<!-- TODO: Some cool image here -->
+**codimate** is an engine for programmatic code animations, designed for creating visualizations for programming videos.
 
 ## Installation
-...
+<!-- TODO -->
 
 ## Usage
-...
+<!-- TODO -->
 
 ## Contributing
 Contributions are always welcome.
