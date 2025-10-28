@@ -314,7 +314,10 @@ impl Color {
 
         let c_max = r_prime.max(g_prime).max(b_prime);
         let c_min = r_prime.min(g_prime).min(b_prime);
+
         let delta = c_max - c_min;
+        // prevent tiny negative zero from noise
+        let delta = if delta.abs() < 1e-8 { 0.0 } else { delta };
 
         let h = if delta == 0.0 {
             0.0
@@ -345,7 +348,10 @@ impl Color {
 
         let c_max = r_prime.max(g_prime).max(b_prime);
         let c_min = r_prime.min(g_prime).min(b_prime);
+
         let delta = c_max - c_min;
+        // prevent tiny negative zero from noise
+        let delta = if delta.abs() < 1e-8 { 0.0 } else { delta };
 
         let h = if delta == 0.0 {
             0.0
@@ -376,7 +382,10 @@ impl Color {
 
         let c_max = r_prime.max(g_prime).max(b_prime);
         let c_min = r_prime.min(g_prime).min(b_prime);
+
         let delta = c_max - c_min;
+        // prevent tiny negative zero from noise
+        let delta = if delta.abs() < 1e-8 { 0.0 } else { delta };
 
         let h = if delta == 0.0 {
             0.0
@@ -407,7 +416,10 @@ impl Color {
 
         let c_max = r_prime.max(g_prime).max(b_prime);
         let c_min = r_prime.min(g_prime).min(b_prime);
+
         let delta = c_max - c_min;
+        // prevent tiny negative zero from noise
+        let delta = if delta.abs() < 1e-8 { 0.0 } else { delta };
 
         let h = if delta == 0.0 {
             0.0
@@ -736,7 +748,14 @@ pub fn parse_color(mut s: &str) -> Result<Color, ColorParseError> {
     }
 
     // CSS-like: rgb(r,g,b) / rgba(r,g,b,a[0..1])
-    // TODO: ADD MORE
+    // TODO: Parsing support is “CSS2-ish” right now
+    // We only handle rgb(r,g,b) and rgba(r,g,b,a) with integers and commas. Modern CSS allows:
+    // Space-separated: rgb(255 0 0)
+    // Percentages: rgb(100% 0% 0%)
+    // Slash alpha: rgb(255 0 0 / 0.5)
+    // HSL: hsl(210 50% 40% / 0.7)
+    // Plan: add a small tokenizer that accepts commas or spaces, and an optional / alpha token.
+    // We already have HSL converters, so once the parser extracts (h, s%, l%, a?), we can call from_hsl.
     let lower = s.to_ascii_lowercase();
     if let Some(args) = lower.strip_prefix("rgb(").and_then(|x| x.strip_suffix(')')) {
         return parse_css_rgb(args);
