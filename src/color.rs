@@ -3,7 +3,10 @@
 // TODO docs
 
 use core::f64;
-use std::{fmt, num::ParseIntError};
+use std::{
+    fmt::{self},
+    num::ParseIntError,
+};
 
 fn decode_srgb_f32(srgb: u8) -> f32 {
     let srgb = (srgb as f32) / 255.0;
@@ -177,80 +180,8 @@ impl Color {
         [self.r, self.g, self.b, self.a]
     }
 
-    pub fn from_hex3(hex3: &str) -> Result<Self, ParseIntError> {
-        let mut hex6 = String::new();
-
-        if let Some(stripped) = hex3.strip_prefix('#') {
-            for ch in stripped.chars() {
-                hex6.push(ch);
-                hex6.push(ch);
-            }
-        } else {
-            for ch in hex3.chars() {
-                hex6.push(ch);
-                hex6.push(ch);
-            }
-        }
-
-        Self::from_hex6(hex6.as_str())
-    }
-
-    pub fn from_hex6(hex6: &str) -> Result<Self, ParseIntError> {
-        if let Some(stripped) = hex6.strip_prefix('#') {
-            Ok(Self {
-                r: u8::from_str_radix(stripped[0..2].into(), 16)?,
-                g: u8::from_str_radix(stripped[2..4].into(), 16)?,
-                b: u8::from_str_radix(stripped[4..6].into(), 16)?,
-                a: 255,
-            })
-        } else {
-            Ok(Self {
-                r: u8::from_str_radix(hex6[0..2].into(), 16)?,
-                g: u8::from_str_radix(hex6[2..4].into(), 16)?,
-                b: u8::from_str_radix(hex6[4..6].into(), 16)?,
-                a: 255,
-            })
-        }
-    }
-
     pub fn into_hex6(self) -> String {
         format!("{:02x}{:02x}{:02x}", self.r, self.g, self.b)
-    }
-
-    pub fn from_hex4(hex4: &str) -> Result<Self, ParseIntError> {
-        let mut hex8 = String::new();
-
-        if let Some(stripped) = hex4.strip_prefix('#') {
-            for ch in stripped.chars() {
-                hex8.push(ch);
-                hex8.push(ch);
-            }
-        } else {
-            for ch in hex4.chars() {
-                hex8.push(ch);
-                hex8.push(ch);
-            }
-        }
-
-        Self::from_hex8(hex8.as_str())
-    }
-
-    pub fn from_hex8(hex8: &str) -> Result<Self, ParseIntError> {
-        if let Some(stripped) = hex8.strip_prefix('#') {
-            Ok(Self {
-                r: u8::from_str_radix(stripped[0..2].into(), 16)?,
-                g: u8::from_str_radix(stripped[2..4].into(), 16)?,
-                b: u8::from_str_radix(stripped[4..6].into(), 16)?,
-                a: u8::from_str_radix(stripped[6..8].into(), 16)?,
-            })
-        } else {
-            Ok(Self {
-                r: u8::from_str_radix(hex8[0..2].into(), 16)?,
-                g: u8::from_str_radix(hex8[2..4].into(), 16)?,
-                b: u8::from_str_radix(hex8[4..6].into(), 16)?,
-                a: u8::from_str_radix(hex8[6..8].into(), 16)?,
-            })
-        }
     }
 
     pub fn into_hex8(self) -> String {
@@ -602,13 +533,182 @@ impl Color {
 
 impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let r = self.r;
-        let g = self.g;
-        let b = self.b;
-        let a = self.a;
-
-        write!(f, "#{r:02x}{g:02x}{b:02x}{a:02x}")
+        // default to RGBA hex for lossless stringification
+        write!(
+            f,
+            "#{:02x}{:02x}{:02x}{:02x}",
+            self.r, self.g, self.b, self.a
+        )
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ColorParseError {
+    Empty,
+    InvalidLength,
+    InvalidHex,
+    InvalidFunc,
+    OutOfRange,
+}
+
+impl fmt::Display for ColorParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use ColorParseError::*;
+        match self {
+            Empty => write!(f, "empty color string"),
+            InvalidLength => write!(f, "invalid hex length"),
+            InvalidHex => write!(f, "invalid hex digits"),
+            InvalidFunc => write!(f, "invalid rgb()/rgba() function"),
+            OutOfRange => write!(f, "component out of range"),
+        }
+    }
+}
+impl std::error::Error for ColorParseError {}
+
+pub fn parse_color(mut s: &str) -> Result<Color, ColorParseError> {
+    use ColorParseError::*;
+
+    if s.trim().is_empty() {
+        return Err(Empty);
+    }
+    s = s.trim();
+
+    // Hex-like
+    if let Some(rest) = s.strip_prefix('#') {
+        let hex = rest.trim();
+        let nibble = |c: u8| -> Option<u8> {
+            match c {
+                b'0'..=b'9' => Some(c - b'0'),
+                b'a'..=b'f' => Some(c - b'a' + 10),
+                b'A'..=b'F' => Some(c - b'A' + 10),
+                _ => None,
+            }
+        };
+
+        let bytes = hex.as_bytes();
+        let (r, g, b, a) = match bytes.len() {
+            3 => {
+                // #RGB
+                let r = nibble(bytes[0]).ok_or(InvalidHex)?;
+                let g = nibble(bytes[1]).ok_or(InvalidHex)?;
+                let b = nibble(bytes[2]).ok_or(InvalidHex)?;
+
+                (r * 17, g * 17, b * 17, 255)
+            }
+            4 => {
+                // #RGBA
+                let r = nibble(bytes[0]).ok_or(InvalidHex)?;
+                let g = nibble(bytes[1]).ok_or(InvalidHex)?;
+                let b = nibble(bytes[2]).ok_or(InvalidHex)?;
+                let a = nibble(bytes[3]).ok_or(InvalidHex)?;
+
+                (r * 17, g * 17, b * 17, a * 17)
+            }
+            6 => {
+                // #RRGGBB
+                let nibble2 = |hi: u8, lo: u8| -> Result<u8, ColorParseError> {
+                    let h = nibble(hi).ok_or(InvalidHex)?;
+                    let l = nibble(lo).ok_or(InvalidHex)?;
+
+                    Ok(h << 4 | l)
+                };
+
+                (
+                    nibble2(bytes[0], bytes[1])?,
+                    nibble2(bytes[2], bytes[3])?,
+                    nibble2(bytes[4], bytes[5])?,
+                    255,
+                )
+            }
+            8 => {
+                // #RRGGBBAA
+                let nibble2 = |hi: u8, lo: u8| -> Result<u8, ColorParseError> {
+                    let h = nibble(hi).ok_or(InvalidHex)?;
+                    let l = nibble(lo).ok_or(InvalidHex)?;
+
+                    Ok(h << 4 | l)
+                };
+
+                (
+                    nibble2(bytes[0], bytes[1])?,
+                    nibble2(bytes[2], bytes[3])?,
+                    nibble2(bytes[4], bytes[5])?,
+                    nibble2(bytes[6], bytes[7])?,
+                )
+            }
+            _ => return Err(InvalidLength),
+        };
+
+        return Ok(Color::from_rgba([r, g, b, a]));
+    }
+
+    // CSS-like: rgb(r,g,b) / rgba(r,g,b,a[0..1])
+    // TODO: ADD MORE
+    let lower = s.to_ascii_lowercase();
+    if let Some(args) = lower.strip_prefix("rgb(").and_then(|x| x.strip_suffix(')')) {
+        let nums: Vec<&str> = args.split(',').map(|t| t.trim()).collect();
+        if nums.len() != 3 {
+            return Err(InvalidFunc);
+        }
+
+        let r = nums[0]
+            .parse::<u16>()
+            .ok()
+            .filter(|&v| v <= 255)
+            .ok_or(OutOfRange)? as u8;
+        let g = nums[1]
+            .parse::<u16>()
+            .ok()
+            .filter(|&v| v <= 255)
+            .ok_or(OutOfRange)? as u8;
+        let b = nums[2]
+            .parse::<u16>()
+            .ok()
+            .filter(|&v| v <= 255)
+            .ok_or(OutOfRange)? as u8;
+
+        return Ok(Color::from_rgb([r, g, b]));
+    }
+    if let Some(args) = lower
+        .strip_prefix("rgba(")
+        .and_then(|x| x.strip_suffix(')'))
+    {
+        let nums: Vec<&str> = args.split(',').map(|t| t.trim()).collect();
+        if nums.len() != 4 {
+            return Err(InvalidFunc);
+        }
+
+        let r = nums[0]
+            .parse::<u16>()
+            .ok()
+            .filter(|&v| v <= 255)
+            .ok_or(OutOfRange)? as u8;
+        let g = nums[1]
+            .parse::<u16>()
+            .ok()
+            .filter(|&v| v <= 255)
+            .ok_or(OutOfRange)? as u8;
+        let b = nums[2]
+            .parse::<u16>()
+            .ok()
+            .filter(|&v| v <= 255)
+            .ok_or(OutOfRange)? as u8;
+
+        // allow 0.0..1.0 or 0..255
+        let a = if let Ok(f) = nums[3].parse::<f32>() {
+            (f.clamp(0.0, 1.0) * 255.0 + 0.5).floor() as u8
+        } else {
+            nums[3]
+                .parse::<u16>()
+                .ok()
+                .filter(|&v| v <= 255)
+                .ok_or(OutOfRange)? as u8
+        };
+
+        return Ok(Color::from_rgba([r, g, b, a]));
+    }
+
+    Err(InvalidFunc)
 }
 
 // TODO
