@@ -531,6 +531,18 @@ impl Color {
             (self.a as f64) / 255.0,
         ]
     }
+
+    // changes opacity by a factor of 0.0 to 1.0
+    pub fn with_alpha(self, factor: f32) -> Self {
+        let factor = factor.clamp(0.0, 1.0);
+
+        Self {
+            r: self.r,
+            g: self.g,
+            b: self.b,
+            a: ((255.0 * factor) + 0.5).floor() as u8
+        }
+    }
 }
 
 impl fmt::Display for Color {
@@ -539,6 +551,7 @@ impl fmt::Display for Color {
         let g = self.g;
         let b = self.b;
         let a = self.a;
+
         write!(f, "#{r:02x}{g:02x}{b:02x}{a:02x}")
     }
 }
@@ -592,7 +605,7 @@ impl fmt::Display for Color {
 
 // Utilities
 
-// with_alpha(a), opacity(); lighten/darken; clamp.
+// with_alpha(a), opacity(), lighten/darken; clamp.
 
 // relative_luminance() and contrast ratio for accessibility checks.
 
