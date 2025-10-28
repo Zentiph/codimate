@@ -6,15 +6,19 @@ use crate::color::Color;
 pub struct Frame {
     width: usize,
     height: usize,
-    data: Vec<u8>
+    data: Vec<u8>,
 }
 
-// note from noar: i assume we wanna add other color support like 
+// note from noar: i assume we wanna add other color support like
 // rgb24 (3 bytes per pixel) and yuv420 (4:2:0 planar layout). frn just added basic rgba
 impl Frame {
     pub fn new(width: usize, height: usize) -> Self {
         let data = vec![0; width * height * 4];
-        Self { width, height, data }
+        Self {
+            width,
+            height,
+            data,
+        }
     }
 
     pub fn clear(&mut self, color: Color) {
@@ -39,7 +43,9 @@ impl Frame {
 
     // this should ONLY be used when plotting very complex shit. otherwise stick to larger fills
     pub fn set_pixel(&mut self, x: usize, y: usize, color: Color) {
-        if !self.check_bounds(x, y) {return}
+        if !self.check_bounds(x, y) {
+            return;
+        }
 
         let i = (y * self.width + x) * 4;
         self.data[i..i + 4].copy_from_slice(&color.into_rgba());
@@ -47,7 +53,9 @@ impl Frame {
 
     // used in blend operations
     pub fn get_pixel(&self, x: usize, y: usize) -> Option<Color> {
-        if !self.check_bounds(x, y) {return None}
+        if !self.check_bounds(x, y) {
+            return None;
+        }
 
         let i = (y * self.width + x) * 4;
         Some(Color::from_rgba([
@@ -62,8 +70,10 @@ impl Frame {
         // clamp, but if fully out of bounds we rly can't do shit
         let x_end = (x + w).min(self.width);
         let y_end = (y + h).min(self.height);
-        if !self.check_bounds(x, y) {return}
-        
+        if !self.check_bounds(x, y) {
+            return;
+        }
+
         let rgba = color.into_rgba();
         for row in y..y_end {
             let start = (row * self.width + x) * 4;
