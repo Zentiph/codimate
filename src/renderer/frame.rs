@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use image::EncodableLayout;
+
 use crate::color::model::Color;
 
 // frames -> width, height, and the actual color data
@@ -21,39 +23,25 @@ impl Frame {
         }
     }
 
-    pub fn clear(&mut self, color: Color) {
-        let rgba = color.into_rgba();
-
-        // copies by chunks of 4 (r, g, b and a)
-        for chunk in self.data.chunks_exact_mut(4) {
-            chunk.copy_from_slice(&rgba);
-        }
+    // accessor for frame data. ffmpeg will need this to be read only for using stdin
+    pub fn as_slice(&self) -> &[u8] {
+        self.data.as_slice()
     }
 
-    // accessor for frame data. sdl and ffmpeg need this
-    pub fn data(&self) -> &[u8] {
-        &self.data
+    // mutable accessor for frame data. i'm pretty sure we'll need this but my brain hurts so i'll just add it
+    pub fn as_bytes_mut(&mut self) -> &mut [u8] {
+        self.data.as_mut_slice()
     }
 
     #[inline]
     // cuz usizes are unsigned we don't have to worry about negative checks
-    fn check_bounds(&self, x: usize, y: usize) -> bool {
-        x >= self.width || y >= self.height
-    }
-
-    // this should ONLY be used when plotting very complex shit. otherwise stick to larger fills
-    pub fn set_pixel(&mut self, x: usize, y: usize, color: Color) {
-        if !self.check_bounds(x, y) {
-            return;
-        }
-
-        let i = (y * self.width + x) * 4;
-        self.data[i..i + 4].copy_from_slice(&color.into_rgba());
+    fn in_bounds(&self, x: usize, y: usize) -> bool {
+        x < self.width && y < self.height
     }
 
     // used in blend operations
     pub fn get_pixel(&self, x: usize, y: usize) -> Option<Color> {
-        if !self.check_bounds(x, y) {
+        if !self.in_bounds(x, y) {
             return None;
         }
 
@@ -64,24 +52,5 @@ impl Frame {
             self.data[i + 2],
             self.data[i + 3],
         ]))
-    }
-
-    pub fn fill_rect(&mut self, x: usize, y: usize, w: usize, h: usize, color: Color) {
-        // clamp, but if fully out of bounds we rly can't do shit
-        let x_end = (x + w).min(self.width);
-        let y_end = (y + h).min(self.height);
-        if !self.check_bounds(x, y) {
-            return;
-        }
-
-        let rgba = color.into_rgba();
-        for row in y..y_end {
-            let start = (row * self.width + x) * 4;
-
-            for col in 0..(x_end - x) {
-                let i = start + col * 4;
-                self.data[i..i + 4].copy_from_slice(&rgba);
-            }
-        }
     }
 }
