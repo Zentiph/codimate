@@ -273,8 +273,7 @@ impl Color {
             120.0..180.0 => (0.0, c, x),
             180.0..240.0 => (0.0, x, c),
             240.0..300.0 => (x, 0.0, c),
-            300.0..360.0 => (c, 0.0, x),
-            _ => (c, x, 0.0), // exhaustive case cover, but will never happen due to h clamping earlier
+            _ => (c, 0.0, x), // 300.0..360.0
         };
 
         Self {
@@ -300,8 +299,7 @@ impl Color {
             120.0..180.0 => (0.0, c, x),
             180.0..240.0 => (0.0, x, c),
             240.0..300.0 => (x, 0.0, c),
-            300.0..360.0 => (c, 0.0, x),
-            _ => (c, x, 0.0), // exhaustive case cover, but will never happen due to h clamping earlier
+            _ => (c, 0.0, x), // 300.0..360.0
         };
 
         Self {
@@ -327,8 +325,7 @@ impl Color {
             120.0..180.0 => (0.0, c, x),
             180.0..240.0 => (0.0, x, c),
             240.0..300.0 => (x, 0.0, c),
-            300.0..360.0 => (c, 0.0, x),
-            _ => (c, x, 0.0), // exhaustive case cover, but will never happen due to h clamping earlier
+            _ => (c, 0.0, x), // 300.0..360.0
         };
 
         Self {
@@ -355,8 +352,7 @@ impl Color {
             120.0..180.0 => (0.0, c, x),
             180.0..240.0 => (0.0, x, c),
             240.0..300.0 => (x, 0.0, c),
-            300.0..360.0 => (c, 0.0, x),
-            _ => (c, x, 0.0), // exhaustive case cover, but will never happen due to h clamping earlier
+            _ => (c, 0.0, x), // 300.0..360.0
         };
 
         Self {
@@ -491,6 +487,78 @@ impl Color {
         [h, s, l, (self.a as f64) / 255.0]
     }
 
+    pub fn from_oklab_f32(oklab: [f32; 3]) -> Self {
+        // source: https://bottosson.github.io/posts/oklab/
+        // numbers rounded to match f32 precision
+
+        let l_ = oklab[0] + 0.39633778 * oklab[1] + 0.21580376 * oklab[2];
+        let m_ = oklab[0] - 0.105561346 * oklab[1] - 0.06385417 * oklab[2];
+        let s_ = oklab[0] - 0.08948418 * oklab[1] - 1.2914856 * oklab[2];
+
+        let l = l_ * l_ * l_;
+        let m = m_ * m_ * m_;
+        let s = s_ * s_ * s_;
+
+        Self::from_linear_f32([
+            4.0767417 * l - 3.3077116 * m + 0.23096993 * s,
+            -1.268438 * l + 2.6097574 * m - 0.3413194 * s,
+            -0.0041960863 * l - 0.7034186 * m + 1.7076147 * s,
+            1.0,
+        ])
+    }
+
+    pub fn from_oklab_f64(oklab: [f64; 3]) -> Self {
+        // source: https://bottosson.github.io/posts/oklab/
+
+        let l_ = oklab[0] + 0.3963377774 * oklab[1] + 0.2158037573 * oklab[2];
+        let m_ = oklab[0] - 0.1055613458 * oklab[1] - 0.0638541728 * oklab[2];
+        let s_ = oklab[0] - 0.0894841775 * oklab[1] - 1.2914855480 * oklab[2];
+
+        let l = l_ * l_ * l_;
+        let m = m_ * m_ * m_;
+        let s = s_ * s_ * s_;
+
+        Self::from_linear_f64([
+            4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+            -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+            -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
+            1.0,
+        ])
+    }
+
+    pub fn into_oklab_f32(self) -> [f32; 3] {
+        // source: https://bottosson.github.io/posts/oklab/
+        // numbers rounded to match f32 precision
+
+        let lin = self.into_linear_f32();
+
+        let l = (0.41222147 * lin[0] + 0.53633254 * lin[1] + 0.051445993 * lin[2]).cbrt();
+        let m = (0.2119035 * lin[0] + 0.6806996 * lin[1] + 0.10739696 * lin[2]).cbrt();
+        let s = (0.08830246 * lin[0] + 0.28171884 * lin[1] + 0.6299787 * lin[2]).cbrt();
+
+        [
+            0.21045426 * l + 0.7936178 * m - 0.004072047 * s,
+            1.9779985 * l - 2.4285922 * m + 0.4505937 * s,
+            0.025904037 * l + 0.78277177 * m - 0.80867577 * s,
+        ]
+    }
+
+    pub fn into_oklab_f64(self) -> [f64; 3] {
+        // source: https://bottosson.github.io/posts/oklab/
+
+        let lin = self.into_linear_f64();
+
+        let l = (0.4122214708 * lin[0] + 0.5363325363 * lin[1] + 0.0514459929 * lin[2]).cbrt();
+        let m = (0.2119034982 * lin[0] + 0.6806995451 * lin[1] + 0.1073969566 * lin[2]).cbrt();
+        let s = (0.0883024619 * lin[0] + 0.2817188376 * lin[1] + 0.6299787005 * lin[2]).cbrt();
+
+        [
+            0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+            1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+            0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
+        ]
+    }
+
     // TODO: CSS function parsing
     // e.g. rgb(255 0 0), rgb(255 0 0 / 0.5), hsl(210 50% 40% / 0.7), etc
 
@@ -580,13 +648,7 @@ impl fmt::Display for Color {
 
 // Conversions
 
-// (Optional but recommended later): sRGB ↔ OKLab/OKLCH for perceptual interpolation.
-
 // Compositing
-
-// Porter–Duff “over” (add a fix: do math in linear, not sRGB).
-
-// Fast path: an approximate sRGB blend for previews.
 
 // (Optional) other blend modes: multiply, screen, overlay, soft-light.
 
