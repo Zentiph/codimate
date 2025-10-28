@@ -39,48 +39,6 @@ fn encode_srgb_f64(l: f64) -> u8 {
     }
 }
 
-// added by noah: 10/27/25 2:50PM. u8, standard, and srgb interpolation.
-// factor is distance: 0 = this color, 1 = other color.
-#[inline]
-pub fn lerp_u8(a: u8, b: u8, factor: u8) -> u8 {
-    // casting from u8 to u16 causes zero overhead
-    let factor = factor as u16;
-
-    let a = a as u16;
-    let b = b as u16;
-
-    // with this being u8: result = (a * (255 - factor) + b * factor + 127) / 255
-    ((a * (255 - factor) + b * factor + 127) / 255) as u8
-}
-
-// linear lerp -> converts rgb and a for both colors into 4 seperate linear values and lerps that way.
-pub fn lerp_linear(a: Color, b: Color, factor: f32) -> Color {
-    // clamping to 0-1 b/c inputs can't be trusted
-    let factor: f32 = factor.clamp(0.0, 1.0);
-
-    let a: [f32; 4] = a.into_linear_f32();
-    let b: [f32; 4] = b.into_linear_f32();
-
-    Color::from_linear_f32([
-        a[0] + (b[0] - a[0]) * factor,
-        a[1] + (b[1] - a[1]) * factor,
-        a[2] + (b[2] - a[2]) * factor,
-        a[3] + (b[3] - a[3]) * factor,
-    ])
-}
-
-// sRGB lerp -> makes 1 color by combining rgb and a values for both colors.
-pub fn lerp_srgb(a: Color, b: Color, factor: f32) -> Color {
-    let factor = (factor * 255.0).round() as u8;
-
-    Color {
-        r: lerp_u8(a.r, b.r, factor),
-        g: lerp_u8(a.g, b.g, factor),
-        b: lerp_u8(a.b, b.b, factor),
-        a: lerp_u8(a.a, b.a, factor),
-    }
-}
-
 // stores sRGB under the hood, with lots of conversion funcs
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Color {
@@ -102,6 +60,38 @@ impl Default for Color {
 }
 
 impl Color {
+    // Linear interpolation in sRGB space; use `lerp_linear` for perceptual correctness.
+    pub fn lerp(self, other: Color, t: f32) -> Color {
+        let t = t.clamp(0.0, 1.0);
+        let lerp8 = |a: u8, b: u8| -> u8 {
+            let a = a as f32;
+            let b = b as f32;
+            (a + (b - a) * t).round().clamp(0.0, 255.0) as u8
+        };
+
+        Color {
+            r: lerp8(self.r, other.r),
+            g: lerp8(self.g, other.g),
+            b: lerp8(self.b, other.b),
+            a: lerp8(self.a, other.a),
+        }
+    }
+
+    // Linear interp in linear space
+    pub fn lerp_linear(self, other: Color, t: f32) -> Color {
+        let t = t.clamp(0.0, 1.0);
+        let a = self.into_linear_f32();
+        let b = other.into_linear_f32();
+        let mix = |x: f32, y: f32| x + (y - x) * t;
+
+        Color::from_linear_f32([
+            mix(a[0], b[0]),
+            mix(a[1], b[1]),
+            mix(a[2], b[2]),
+            mix(a[3], b[3]),
+        ])
+    }
+
     // Porter-Duff "over" in linear space
     // for speed over accuracy, use `over_srgb_fast`
     // https://keithp.com/~keithp/porterduff/p253-porter.pdf
@@ -150,6 +140,15 @@ impl Color {
         dst.b = b;
         dst.a = a;
         dst
+    }
+
+    pub fn with_alpha(self, a: u8) -> Self {
+        Self {
+            r: self.r,
+            g: self.g,
+            b: self.b,
+            a,
+        }
     }
 
     pub fn from_rgb(rgb: [u8; 3]) -> Self {
@@ -599,15 +598,6 @@ impl Color {
             (self.a as f64) / 255.0,
         ]
     }
-
-    pub fn with_alpha(self, a: u8) -> Self {
-        Self {
-            r: self.r,
-            g: self.g,
-            b: self.b,
-            a,
-        }
-    }
 }
 
 impl fmt::Display for Color {
@@ -658,63 +648,11 @@ impl fmt::Display for Color {
 
 // Utilities
 
-// with_alpha(a), opacity(), lighten/darken; clamp.
+// lighten/darken.
 
 // relative_luminance() and contrast ratio for accessibility checks.
 
 // (Optional) named colors table ("rebeccapurple").
-
-// Canonical needed
-// sRGB ↔ linear light (D65, IEC 61966-2-1)
-
-// For channel C' in sRGB (0–1) and linear C (0–1):
-
-// Decode (sRGB → linear):
-
-// if C' ≤ 0.04045: C = C' / 12.92
-
-// else: C = ((C' + 0.055) / 1.055) ^ 2.4
-// W3C
-// +2
-// Wikipedia
-// +2
-
-// Encode (linear → sRGB):
-
-// if C ≤ 0.0031308: C' = 12.92 * C
-
-// else: C' = 1.055 * C^(1/2.4) − 0.055
-// Color.org
-
-// Tip: store bytes (0–255), convert to floats only for math. Use f32; f64 only if you need exactness.
-
-// HSL ↔ RGB (CSS)
-
-// H in degrees [0,360), S & L as fractions [0,1].
-
-// Implement the standard helper hue2rgb(p, q, t); the CSS Color spec/MDN has precise steps and the modern function syntax (space-separated, / alpha).
-// W3C
-// +2
-// MDN Web Docs
-// +2
-
-// OKLab / OKLCH (optional, for better gradients)
-
-// Use Björn Ottosson’s definitions; convert sRGB → linear → OKLab → (interpolate) → back. Great for hue-stable ramps and UI themes.
-// Björn Ottosson
-// +1
-
-// Porter–Duff compositing (“over”)
-
-// With premultiplied RGBA (rgb already multiplied by a), the classic “over”:
-
-// A_out = A_fg + A_bg * (1 − A_fg)
-
-// RGB_out = RGB_fg + RGB_bg * (1 − A_fg)
-
-// If you store straight alpha, either convert to premultiplied for math or use the straight-alpha form (a bit longer). Do math in linear RGB.
-// Keith P.
-// +1
 
 // Common blend modes (straight alpha; do in linear)
 
