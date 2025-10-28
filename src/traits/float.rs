@@ -28,9 +28,13 @@ pub trait Float: Copy + PartialOrd {
     fn mul(self, rhs: Self) -> Self;
     fn div(self, rhs: Self) -> Self;
 
+    fn abs(self) -> Self;
     fn powf(self, e: Self) -> Self;
     fn cbrt(self) -> Self;
+    fn rem_euclid(self, rhs: Self) -> Self;
+
     /// Clamp this Float between 0.0 and 1.0
+    #[inline]
     fn clamp01(self) -> Self {
         clamp_generic(self, Self::ZERO, Self::ONE)
     }
@@ -71,12 +75,21 @@ impl Float for f32 {
     }
 
     #[inline]
+    fn abs(self) -> Self {
+        self.abs()
+    }
+    #[inline]
     fn powf(self, e: Self) -> Self {
         f32::powf(self, e)
     }
     #[inline]
     fn cbrt(self) -> Self {
         f32::cbrt(self)
+    }
+    #[inline]
+    fn rem_euclid(self, rhs: Self) -> Self {
+        let r = self % rhs;
+        if r < 0.0 { r + rhs.abs() } else { r }
     }
 }
 
@@ -115,11 +128,20 @@ impl Float for f64 {
     }
 
     #[inline]
+    fn abs(self) -> Self {
+        self.abs()
+    }
+    #[inline]
     fn powf(self, e: Self) -> Self {
         f64::powf(self, e)
     }
     #[inline]
     fn cbrt(self) -> Self {
         f64::cbrt(self)
+    }
+    #[inline]
+    fn rem_euclid(self, rhs: Self) -> Self {
+        let r = self % rhs;
+        if r < 0.0 { r + rhs.abs() } else { r }
     }
 }
