@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use crate::color::color::Color;
+use crate::color::model::Color;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ColorParseError {

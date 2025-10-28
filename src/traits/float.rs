@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 /// Clamp a generic value between two other values.
 #[inline(always)]
 pub fn clamp_generic<T: PartialOrd>(x: T, lo: T, hi: T) -> T {

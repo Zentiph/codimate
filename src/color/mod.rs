@@ -1,2 +1,2 @@
-pub mod color;
+pub mod model;
 pub mod parse;

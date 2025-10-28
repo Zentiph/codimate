@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::color::color::Color;
+use crate::color::model::Color;
 
 // frames -> width, height, and the actual color data
 pub struct Frame {
