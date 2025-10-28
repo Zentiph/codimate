@@ -770,6 +770,19 @@ pub fn parse_color(mut s: &str) -> Result<Color, ColorParseError> {
     Err(InvalidFunc)
 }
 
+impl std::str::FromStr for Color {
+    type Err = ColorParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        parse_color(s)
+    }
+}
+impl TryFrom<&str> for Color {
+    type Error = ColorParseError;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        parse_color(value)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
