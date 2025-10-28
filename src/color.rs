@@ -2,7 +2,6 @@
 
 // TODO docs
 
-use core::f64;
 use std::fmt::{self};
 
 // ----------------------------------- //
