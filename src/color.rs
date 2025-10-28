@@ -3,10 +3,11 @@
 // TODO docs
 
 use core::f64;
-use std::{
-    fmt::{self},
-    num::ParseIntError,
-};
+use std::fmt::{self};
+
+// ----------------------------- //
+// ---------- helpers ---------- //
+// ----------------------------- //
 
 fn decode_srgb_f32(srgb: u8) -> f32 {
     let srgb = (srgb as f32) / 255.0;
@@ -41,6 +42,10 @@ fn encode_srgb_f64(l: f64) -> u8 {
         ((1.055 * l.powf(1.0 / 2.4) - 0.055) * 255.0 + 0.5).floor() as u8
     }
 }
+
+// -------------------------------- //
+// ---------- color base ---------- //
+// -------------------------------- //
 
 // stores sRGB under the hood, with lots of conversion funcs
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -542,6 +547,10 @@ impl fmt::Display for Color {
     }
 }
 
+// ------------------------------------ //
+// ---------- string parsing ---------- //
+// ------------------------------------ //
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ColorParseError {
     Empty,
@@ -565,6 +574,140 @@ impl fmt::Display for ColorParseError {
 }
 impl std::error::Error for ColorParseError {}
 
+fn parse_hex(hex: &str) -> Result<Color, ColorParseError> {
+    use ColorParseError::*;
+
+    let nibble = |c: u8| -> Option<u8> {
+        match c {
+            b'0'..=b'9' => Some(c - b'0'),
+            b'a'..=b'f' => Some(c - b'a' + 10),
+            b'A'..=b'F' => Some(c - b'A' + 10),
+            _ => None,
+        }
+    };
+
+    let bytes = hex.as_bytes();
+    let (r, g, b, a) = match bytes.len() {
+        3 => {
+            // #RGB
+            let r = nibble(bytes[0]).ok_or(InvalidHex)?;
+            let g = nibble(bytes[1]).ok_or(InvalidHex)?;
+            let b = nibble(bytes[2]).ok_or(InvalidHex)?;
+
+            (r * 17, g * 17, b * 17, 255)
+        }
+        4 => {
+            // #RGBA
+            let r = nibble(bytes[0]).ok_or(InvalidHex)?;
+            let g = nibble(bytes[1]).ok_or(InvalidHex)?;
+            let b = nibble(bytes[2]).ok_or(InvalidHex)?;
+            let a = nibble(bytes[3]).ok_or(InvalidHex)?;
+
+            (r * 17, g * 17, b * 17, a * 17)
+        }
+        6 => {
+            // #RRGGBB
+            let nibble2 = |hi: u8, lo: u8| -> Result<u8, ColorParseError> {
+                let h = nibble(hi).ok_or(InvalidHex)?;
+                let l = nibble(lo).ok_or(InvalidHex)?;
+
+                Ok(h << 4 | l)
+            };
+
+            (
+                nibble2(bytes[0], bytes[1])?,
+                nibble2(bytes[2], bytes[3])?,
+                nibble2(bytes[4], bytes[5])?,
+                255,
+            )
+        }
+        8 => {
+            // #RRGGBBAA
+            let nibble2 = |hi: u8, lo: u8| -> Result<u8, ColorParseError> {
+                let h = nibble(hi).ok_or(InvalidHex)?;
+                let l = nibble(lo).ok_or(InvalidHex)?;
+
+                Ok(h << 4 | l)
+            };
+
+            (
+                nibble2(bytes[0], bytes[1])?,
+                nibble2(bytes[2], bytes[3])?,
+                nibble2(bytes[4], bytes[5])?,
+                nibble2(bytes[6], bytes[7])?,
+            )
+        }
+        _ => return Err(InvalidLength),
+    };
+
+    Ok(Color::from_rgba([r, g, b, a]))
+}
+
+fn parse_css_rgb(args: &str) -> Result<Color, ColorParseError> {
+    use ColorParseError::*;
+
+    let nums: Vec<&str> = args.split(',').map(|t| t.trim()).collect();
+    if nums.len() != 3 {
+        return Err(InvalidFunc);
+    }
+
+    let r = nums[0]
+        .parse::<u16>()
+        .ok()
+        .filter(|&v| v <= 255)
+        .ok_or(OutOfRange)? as u8;
+    let g = nums[1]
+        .parse::<u16>()
+        .ok()
+        .filter(|&v| v <= 255)
+        .ok_or(OutOfRange)? as u8;
+    let b = nums[2]
+        .parse::<u16>()
+        .ok()
+        .filter(|&v| v <= 255)
+        .ok_or(OutOfRange)? as u8;
+
+    Ok(Color::from_rgb([r, g, b]))
+}
+
+fn parse_css_rgba(args: &str) -> Result<Color, ColorParseError> {
+    use ColorParseError::*;
+
+    let nums: Vec<&str> = args.split(',').map(|t| t.trim()).collect();
+    if nums.len() != 4 {
+        return Err(InvalidFunc);
+    }
+
+    let r = nums[0]
+        .parse::<u16>()
+        .ok()
+        .filter(|&v| v <= 255)
+        .ok_or(OutOfRange)? as u8;
+    let g = nums[1]
+        .parse::<u16>()
+        .ok()
+        .filter(|&v| v <= 255)
+        .ok_or(OutOfRange)? as u8;
+    let b = nums[2]
+        .parse::<u16>()
+        .ok()
+        .filter(|&v| v <= 255)
+        .ok_or(OutOfRange)? as u8;
+
+    // allow 0.0..1.0 or 0..255
+    let a = if let Ok(f) = nums[3].parse::<f32>() {
+        (f.clamp(0.0, 1.0) * 255.0 + 0.5).floor() as u8
+    } else {
+        nums[3]
+            .parse::<u16>()
+            .ok()
+            .filter(|&v| v <= 255)
+            .ok_or(OutOfRange)? as u8
+    };
+
+    Ok(Color::from_rgba([r, g, b, a]))
+}
+
 pub fn parse_color(mut s: &str) -> Result<Color, ColorParseError> {
     use ColorParseError::*;
 
@@ -576,136 +719,20 @@ pub fn parse_color(mut s: &str) -> Result<Color, ColorParseError> {
     // Hex-like
     if let Some(rest) = s.strip_prefix('#') {
         let hex = rest.trim();
-        let nibble = |c: u8| -> Option<u8> {
-            match c {
-                b'0'..=b'9' => Some(c - b'0'),
-                b'a'..=b'f' => Some(c - b'a' + 10),
-                b'A'..=b'F' => Some(c - b'A' + 10),
-                _ => None,
-            }
-        };
-
-        let bytes = hex.as_bytes();
-        let (r, g, b, a) = match bytes.len() {
-            3 => {
-                // #RGB
-                let r = nibble(bytes[0]).ok_or(InvalidHex)?;
-                let g = nibble(bytes[1]).ok_or(InvalidHex)?;
-                let b = nibble(bytes[2]).ok_or(InvalidHex)?;
-
-                (r * 17, g * 17, b * 17, 255)
-            }
-            4 => {
-                // #RGBA
-                let r = nibble(bytes[0]).ok_or(InvalidHex)?;
-                let g = nibble(bytes[1]).ok_or(InvalidHex)?;
-                let b = nibble(bytes[2]).ok_or(InvalidHex)?;
-                let a = nibble(bytes[3]).ok_or(InvalidHex)?;
-
-                (r * 17, g * 17, b * 17, a * 17)
-            }
-            6 => {
-                // #RRGGBB
-                let nibble2 = |hi: u8, lo: u8| -> Result<u8, ColorParseError> {
-                    let h = nibble(hi).ok_or(InvalidHex)?;
-                    let l = nibble(lo).ok_or(InvalidHex)?;
-
-                    Ok(h << 4 | l)
-                };
-
-                (
-                    nibble2(bytes[0], bytes[1])?,
-                    nibble2(bytes[2], bytes[3])?,
-                    nibble2(bytes[4], bytes[5])?,
-                    255,
-                )
-            }
-            8 => {
-                // #RRGGBBAA
-                let nibble2 = |hi: u8, lo: u8| -> Result<u8, ColorParseError> {
-                    let h = nibble(hi).ok_or(InvalidHex)?;
-                    let l = nibble(lo).ok_or(InvalidHex)?;
-
-                    Ok(h << 4 | l)
-                };
-
-                (
-                    nibble2(bytes[0], bytes[1])?,
-                    nibble2(bytes[2], bytes[3])?,
-                    nibble2(bytes[4], bytes[5])?,
-                    nibble2(bytes[6], bytes[7])?,
-                )
-            }
-            _ => return Err(InvalidLength),
-        };
-
-        return Ok(Color::from_rgba([r, g, b, a]));
+        return parse_hex(hex);
     }
 
     // CSS-like: rgb(r,g,b) / rgba(r,g,b,a[0..1])
     // TODO: ADD MORE
     let lower = s.to_ascii_lowercase();
     if let Some(args) = lower.strip_prefix("rgb(").and_then(|x| x.strip_suffix(')')) {
-        let nums: Vec<&str> = args.split(',').map(|t| t.trim()).collect();
-        if nums.len() != 3 {
-            return Err(InvalidFunc);
-        }
-
-        let r = nums[0]
-            .parse::<u16>()
-            .ok()
-            .filter(|&v| v <= 255)
-            .ok_or(OutOfRange)? as u8;
-        let g = nums[1]
-            .parse::<u16>()
-            .ok()
-            .filter(|&v| v <= 255)
-            .ok_or(OutOfRange)? as u8;
-        let b = nums[2]
-            .parse::<u16>()
-            .ok()
-            .filter(|&v| v <= 255)
-            .ok_or(OutOfRange)? as u8;
-
-        return Ok(Color::from_rgb([r, g, b]));
+        return parse_css_rgb(args);
     }
     if let Some(args) = lower
         .strip_prefix("rgba(")
         .and_then(|x| x.strip_suffix(')'))
     {
-        let nums: Vec<&str> = args.split(',').map(|t| t.trim()).collect();
-        if nums.len() != 4 {
-            return Err(InvalidFunc);
-        }
-
-        let r = nums[0]
-            .parse::<u16>()
-            .ok()
-            .filter(|&v| v <= 255)
-            .ok_or(OutOfRange)? as u8;
-        let g = nums[1]
-            .parse::<u16>()
-            .ok()
-            .filter(|&v| v <= 255)
-            .ok_or(OutOfRange)? as u8;
-        let b = nums[2]
-            .parse::<u16>()
-            .ok()
-            .filter(|&v| v <= 255)
-            .ok_or(OutOfRange)? as u8;
-
-        // allow 0.0..1.0 or 0..255
-        let a = if let Ok(f) = nums[3].parse::<f32>() {
-            (f.clamp(0.0, 1.0) * 255.0 + 0.5).floor() as u8
-        } else {
-            nums[3]
-                .parse::<u16>()
-                .ok()
-                .filter(|&v| v <= 255)
-                .ok_or(OutOfRange)? as u8
-        };
-
-        return Ok(Color::from_rgba([r, g, b, a]));
+        return parse_css_rgba(args);
     }
 
     Err(InvalidFunc)
@@ -721,8 +748,6 @@ pub fn parse_color(mut s: &str) -> Result<Color, ColorParseError> {
 // Parsing & printing
 
 // CSS funcs (modern syntax):
-
-// rgb(255 0 0), rgb(255 0 0 / 0.5), allow commas too.
 
 // hsl(210 50% 40% / 0.7) (you’ll need HSL↔RGB).
 
