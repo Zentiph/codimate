@@ -250,8 +250,11 @@ impl Color {
 
     pub fn from_hsla_f32(hsla: [f32; 4]) -> Self {
         // solution from https://www.rapidtables.com/convert/color/hsl-to-rgb.html
-        let (mut h, s, l) = (hsla[0], hsla[1] / 100.0, hsla[2] / 100.0);
-        h = h.rem_euclid(360.0);
+        let (h, s, l) = (
+            hsla[0].rem_euclid(360.0),
+            hsla[1].clamp(0.0, 1.0),
+            hsla[2].clamp(0.0, 1.0),
+        );
 
         let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
         let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
@@ -276,9 +279,11 @@ impl Color {
 
     pub fn from_hsla_f64(hsla: [f64; 4]) -> Self {
         // solution from https://www.rapidtables.com/convert/color/hsl-to-rgb.html
-        let (mut h, s, l) = (hsla[0], hsla[1] / 100.0, hsla[2] / 100.0);
-
-        h = h.rem_euclid(360.0);
+        let (h, s, l) = (
+            hsla[0].rem_euclid(360.0),
+            hsla[1].clamp(0.0, 1.0),
+            hsla[2].clamp(0.0, 1.0),
+        );
 
         let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
         let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
