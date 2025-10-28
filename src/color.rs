@@ -5,9 +5,9 @@
 use core::f64;
 use std::fmt::{self};
 
-// ----------------------------- //
-// ---------- helpers ---------- //
-// ----------------------------- //
+// ----------------------------------- //
+// ---------- color helpers ---------- //
+// ----------------------------------- //
 
 fn decode_srgb_f32(srgb: u8) -> f32 {
     let srgb = (srgb as f32) / 255.0;
@@ -574,6 +574,10 @@ impl fmt::Display for ColorParseError {
 }
 impl std::error::Error for ColorParseError {}
 
+// -------------------------------------------- //
+// ---------- string parsing helpers ---------- //
+// -------------------------------------------- //
+
 fn parse_hex(hex: &str) -> Result<Color, ColorParseError> {
     use ColorParseError::*;
 
@@ -707,6 +711,10 @@ fn parse_css_rgba(args: &str) -> Result<Color, ColorParseError> {
 
     Ok(Color::from_rgba([r, g, b, a]))
 }
+
+// ---------------------------------------- //
+// ---------- THE BIG BOY PARSER ---------- //
+// ---------------------------------------- //
 
 pub fn parse_color(mut s: &str) -> Result<Color, ColorParseError> {
     use ColorParseError::*;
