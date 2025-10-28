@@ -1,5 +1,9 @@
 #![allow(dead_code)]
 
+// Special note from Gavin: if you call it "colour", you are WRONG,
+// which is why we will have ZERO cross-compatibility with that name.
+// you will be FORCED to type "color" until you realize that it is superior.
+
 // TODO docs
 
 use std::fmt::{self};
@@ -128,6 +132,7 @@ impl Float for f64 {
     }
 }
 
+/// Decode an 8 bit sRGB value into a linear float.
 #[inline]
 fn decode_srgb<T: Float>(srgb_u8: u8) -> T {
     let srgb = T::from_f64((srgb_u8 as f64) / 255.0);
@@ -146,6 +151,7 @@ fn decode_srgb<T: Float>(srgb_u8: u8) -> T {
     }
 }
 
+/// Encode a linear float into an 8 bit sRGB value.
 #[inline]
 fn encode_srgb<T: Float>(lin: T) -> u8 {
     let l = lin.clamp01();
@@ -166,10 +172,6 @@ fn encode_srgb<T: Float>(lin: T) -> u8 {
     let y = (srgb.to_f32() * 255.0 + 0.5).floor();
     y as u8
 }
-
-// -------------------------------- //
-// ---------- color base ---------- //
-// -------------------------------- //
 
 // stores sRGB under the hood, with lots of conversion funcs
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -710,10 +712,6 @@ impl fmt::Display for Color {
     }
 }
 
-// ------------------------------------ //
-// ---------- string parsing ---------- //
-// ------------------------------------ //
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ColorParseError {
     Empty,
@@ -737,10 +735,13 @@ impl fmt::Display for ColorParseError {
 }
 impl std::error::Error for ColorParseError {}
 
-// -------------------------------------------- //
-// ---------- string parsing helpers ---------- //
-// -------------------------------------------- //
-
+/// Parse a hex color from a string.
+///
+/// The allowed formats are:
+/// * #RGB
+/// * #RGBA
+/// * #RRGGBB
+/// * #RRGGBBAA
 fn parse_hex(hex: &str) -> Result<Color, ColorParseError> {
     use ColorParseError::*;
 
@@ -810,6 +811,13 @@ fn parse_hex(hex: &str) -> Result<Color, ColorParseError> {
     Ok(Color::from_rgba([r, g, b, a]))
 }
 
+/// Parse a CSS rgb function.
+///
+/// The allowed styles are:
+/// rgb(r,g,b)
+/// rgb(r g b) (TODO: needs implementation)
+/// rgb(r% g% b%) (TODO: needs implementation)
+/// rgb(r g b / a) (TODO: needs implementation)
 fn parse_css_rgb(args: &str) -> Result<Color, ColorParseError> {
     use ColorParseError::*;
 
@@ -837,6 +845,13 @@ fn parse_css_rgb(args: &str) -> Result<Color, ColorParseError> {
     Ok(Color::from_rgb([r, g, b]))
 }
 
+/// Parse a CSS rgba function.
+///
+/// The allowed styles are:
+/// rgba(r,g,b,a)
+/// rgba(r g b a) (TODO: needs implementation)
+/// rgba(r% g% b% a%) (TODO: needs implementation)
+/// rgba(r g b / a) (TODO: needs implementation)
 fn parse_css_rgba(args: &str) -> Result<Color, ColorParseError> {
     use ColorParseError::*;
 
@@ -874,10 +889,6 @@ fn parse_css_rgba(args: &str) -> Result<Color, ColorParseError> {
 
     Ok(Color::from_rgba([r, g, b, a]))
 }
-
-// ---------------------------------------- //
-// ---------- THE BIG BOY PARSER ---------- //
-// ---------------------------------------- //
 
 pub fn parse_color(mut s: &str) -> Result<Color, ColorParseError> {
     use ColorParseError::*;
