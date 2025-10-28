@@ -746,6 +746,31 @@ pub fn parse_color(mut s: &str) -> Result<Color, ColorParseError> {
     Err(InvalidFunc)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hex_parse_variants() {
+        assert_eq!(
+            parse_color("#fff").unwrap(),
+            Color::from_rgba([255, 255, 255, 255])
+        );
+        assert_eq!(
+            parse_color("#0008").unwrap(),
+            Color::from_rgba([0, 0, 0, 136])
+        );
+        assert_eq!(
+            parse_color("#112233").unwrap(),
+            Color::from_rgba([0x11, 0x22, 0x33, 255])
+        );
+        assert_eq!(
+            parse_color("#11223344").unwrap(),
+            Color::from_rgba([0x11, 0x22, 0x33, 0x44])
+        );
+    }
+}
+
 // TODO
 // What to build (in sequence)
 
