@@ -39,7 +39,7 @@ fn encode_srgb_f64(l: f64) -> u8 {
     }
 }
 
-// added by noah: 10/27/25 2:50PM. u8, standard, and srgb interpolation. 
+// added by noah: 10/27/25 2:50PM. u8, standard, and srgb interpolation.
 // factor is distance: 0 = this color, 1 = other color.
 #[inline]
 pub fn lerp_u8(a: u8, b: u8, factor: u8) -> u8 {
@@ -60,7 +60,7 @@ pub fn lerp_linear(a: Color, b: Color, factor: f32) -> Color {
 
     let a: [f32; 4] = a.into_linear_f32();
     let b: [f32; 4] = b.into_linear_f32();
-    
+
     Color::from_linear_f32([
         a[0] + (b[0] - a[0]) * factor,
         a[1] + (b[1] - a[1]) * factor,
@@ -72,7 +72,7 @@ pub fn lerp_linear(a: Color, b: Color, factor: f32) -> Color {
 // sRGB lerp -> makes 1 color by combining rgb and a values for both colors.
 pub fn lerp_srgb(a: Color, b: Color, factor: f32) -> Color {
     let factor = (factor * 255.0).round() as u8;
-    
+
     Color {
         r: lerp_u8(a.r, b.r, factor),
         g: lerp_u8(a.g, b.g, factor),
@@ -532,15 +532,12 @@ impl Color {
         ]
     }
 
-    // changes opacity by a factor of 0.0 to 1.0
-    pub fn with_alpha(self, factor: f32) -> Self {
-        let factor = factor.clamp(0.0, 1.0);
-
+    pub fn with_alpha(self, a: u8) -> Self {
         Self {
             r: self.r,
             g: self.g,
             b: self.b,
-            a: ((255.0 * factor) + 0.5).floor() as u8
+            a,
         }
     }
 }
@@ -563,7 +560,6 @@ impl fmt::Display for Color {
 
 // Color as sRGB 8-bit, straight alpha (r,g,b,a : u8). [mostly done. test that this works]
 
-
 // Parsing & printing
 
 // CSS funcs (modern syntax):
@@ -574,7 +570,6 @@ impl fmt::Display for Color {
 
 // (Optional) hwb(h w b / a).
 
-
 // Validation & ergonomics
 
 // Accept integer 0–255 or percentages (e.g., rgb(100% 0% 0%)).
@@ -583,11 +578,9 @@ impl fmt::Display for Color {
 
 // Case-insensitive; trim whitespace; good errors.
 
-
 // Conversions
 
 // (Optional but recommended later): sRGB ↔ OKLab/OKLCH for perceptual interpolation.
-
 
 // Compositing
 
@@ -597,11 +590,9 @@ impl fmt::Display for Color {
 
 // (Optional) other blend modes: multiply, screen, overlay, soft-light.
 
-
 // Interpolation
 
 // (Bonus) lerp_oklch to avoid hue/brightness drift in gradients.
-
 
 // Utilities
 
@@ -611,12 +602,10 @@ impl fmt::Display for Color {
 
 // (Optional) named colors table ("rebeccapurple").
 
-
 // Canonical needed
 // sRGB ↔ linear light (D65, IEC 61966-2-1)
 
 // For channel C' in sRGB (0–1) and linear C (0–1):
-
 
 // Decode (sRGB → linear):
 
@@ -627,7 +616,6 @@ impl fmt::Display for Color {
 // +2
 // Wikipedia
 // +2
-
 
 // Encode (linear → sRGB):
 
@@ -648,13 +636,11 @@ impl fmt::Display for Color {
 // MDN Web Docs
 // +2
 
-
 // OKLab / OKLCH (optional, for better gradients)
 
 // Use Björn Ottosson’s definitions; convert sRGB → linear → OKLab → (interpolate) → back. Great for hue-stable ramps and UI themes.
 // Björn Ottosson
 // +1
-
 
 // Porter–Duff compositing (“over”)
 
@@ -668,7 +654,6 @@ impl fmt::Display for Color {
 // Keith P.
 // +1
 
-
 // Common blend modes (straight alpha; do in linear)
 
 // Let s = source (fg), d = dest (bg), both unpremultiplied linear RGB:
@@ -679,7 +664,6 @@ impl fmt::Display for Color {
 
 // Overlay: out = (d < 0.5) ? (2*s*d) : (1 − 2*(1 − s)*(1 − d))
 // Then compose with alpha using Porter–Duff.
-
 
 // Relative luminance & contrast ratio (WCAG 2.x)
 
@@ -692,7 +676,6 @@ impl fmt::Display for Color {
 // Targets: 4.5:1 (normal text), 3:1 (large text).
 // W3C
 // +1
-
 
 // Implementation tips (so this is done right and fast)
 
@@ -708,13 +691,11 @@ impl fmt::Display for Color {
 
 // Alpha semantics: keep straight alpha externally (what creators expect). Convert to premultiplied internally when blending.
 
-
 // Interpolation defaults:
 
 // UI theming: lerp_oklch or lerp_linear.
 
 // “Glow/fade”: linear + premultiplied for smooth edges.
-
 
 // Performance:
 
@@ -723,7 +704,6 @@ impl fmt::Display for Color {
 // Keep a tiny LUT for sRGB ↔ linear (e.g., 4096 entries) if you want speed.
 
 // Batch blends per scanline; consider SIMD later.
-
 
 // APIs:
 
@@ -734,7 +714,6 @@ impl fmt::Display for Color {
 // Feature-gate serde derives for config files.
 
 // Error type with specific variants: InvalidHex, InvalidFunc, OutOfRange, etc.
-
 
 // Testing:
 
