@@ -10,7 +10,15 @@ use std::fmt::{self};
 
 use crate::traits::float::{Float, clamp_generic};
 
+/// Decode an 8 bit sRGB value into a linear float using a lookup table.
+#[cfg(feature = "srgb_lut")]
+#[inline]
+fn decode_srgb<T: Float>(srgb_u8: u8) -> T {
+    T::from_f32(crate::color::lut::decode_srgb_lut_f32(srgb_u8))
+}
+
 /// Decode an 8 bit sRGB value into a linear float.
+#[cfg(not(feature = "srgb_lut"))]
 #[inline]
 fn decode_srgb<T: Float>(srgb_u8: u8) -> T {
     let srgb = T::from_f64((srgb_u8 as f64) / 255.0);
@@ -29,7 +37,15 @@ fn decode_srgb<T: Float>(srgb_u8: u8) -> T {
     }
 }
 
+/// Encode an 8 bit sRGB value into a linear float using a lookup table.
+#[cfg(feature = "srgb_lut")]
+#[inline]
+fn encode_srgb<T: Float>(lin: T) -> u8 {
+    crate::color::lut::encode_srgb_lut_f32(lin.to_f32())
+}
+
 /// Encode a linear float into an 8 bit sRGB value.
+#[cfg(not(feature = "srgb_lut"))]
 #[inline]
 fn encode_srgb<T: Float>(lin: T) -> u8 {
     let l = lin.clamp01();
