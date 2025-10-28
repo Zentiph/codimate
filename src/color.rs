@@ -27,6 +27,8 @@ fn decode_srgb_f64(srgb: u8) -> f64 {
 }
 
 fn encode_srgb_f32(l: f32) -> u8 {
+    let l = l.clamp(0.0, 1.0);
+
     if l <= 0.0031308 {
         ((12.92 * l) * 255.0 + 0.5).floor() as u8
     } else {
@@ -35,6 +37,8 @@ fn encode_srgb_f32(l: f32) -> u8 {
 }
 
 fn encode_srgb_f64(l: f64) -> u8 {
+    let l = l.clamp(0.0, 1.0);
+
     if l <= 0.0031308 {
         ((12.92 * l) * 255.0 + 0.5).floor() as u8
     } else {
@@ -421,6 +425,44 @@ impl Color {
         [h, s, l, (self.a as f64) / 255.0]
     }
 
+    // encode linear light -> sRGB (D65, IEC 61966-2-1)
+    pub fn from_linear_f32(lin: [f32; 4]) -> Self {
+        Self {
+            r: encode_srgb_f32(lin[0]),
+            g: encode_srgb_f32(lin[1]),
+            b: encode_srgb_f32(lin[2]),
+            a: (lin[3].clamp(0.0, 1.0) * 255.0 + 0.5).floor() as u8,
+        }
+    }
+
+    pub fn from_linear_f64(lin: [f64; 4]) -> Self {
+        Self {
+            r: encode_srgb_f64(lin[0]),
+            g: encode_srgb_f64(lin[1]),
+            b: encode_srgb_f64(lin[2]),
+            a: (lin[3].clamp(0.0, 1.0) * 255.0 + 0.5).floor() as u8,
+        }
+    }
+
+    // decode sRGB -> linear light (D65, IEC 61966-2-1)
+    pub fn into_linear_f32(self) -> [f32; 4] {
+        [
+            decode_srgb_f32(self.r),
+            decode_srgb_f32(self.g),
+            decode_srgb_f32(self.b),
+            (self.a as f32) / 255.0,
+        ]
+    }
+
+    pub fn into_linear_f64(self) -> [f64; 4] {
+        [
+            decode_srgb_f64(self.r),
+            decode_srgb_f64(self.g),
+            decode_srgb_f64(self.b),
+            (self.a as f64) / 255.0,
+        ]
+    }
+
     pub fn from_oklab_f32(oklab: [f32; 3]) -> Self {
         // source: https://bottosson.github.io/posts/oklab/
         // numbers rounded to match f32 precision
@@ -490,47 +532,6 @@ impl Color {
             0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
             1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
             0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
-        ]
-    }
-
-    // TODO: CSS function parsing
-    // e.g. rgb(255 0 0), rgb(255 0 0 / 0.5), hsl(210 50% 40% / 0.7), etc
-
-    // encode linear light -> sRGB (D65, IEC 61966-2-1)
-    pub fn from_linear_f32(lin: [f32; 4]) -> Self {
-        Self {
-            r: encode_srgb_f32(lin[0]),
-            g: encode_srgb_f32(lin[1]),
-            b: encode_srgb_f32(lin[2]),
-            a: (lin[3] * 255.0 + 0.5).floor() as u8,
-        }
-    }
-
-    pub fn from_linear_f64(lin: [f64; 4]) -> Self {
-        Self {
-            r: encode_srgb_f64(lin[0]),
-            g: encode_srgb_f64(lin[1]),
-            b: encode_srgb_f64(lin[2]),
-            a: (lin[3] * 255.0 + 0.5).floor() as u8,
-        }
-    }
-
-    // decode sRGB -> linear light (D65, IEC 61966-2-1)
-    pub fn into_linear_f32(self) -> [f32; 4] {
-        [
-            decode_srgb_f32(self.r),
-            decode_srgb_f32(self.g),
-            decode_srgb_f32(self.b),
-            (self.a as f32) / 255.0,
-        ]
-    }
-
-    pub fn into_linear_f64(self) -> [f64; 4] {
-        [
-            decode_srgb_f64(self.r),
-            decode_srgb_f64(self.g),
-            decode_srgb_f64(self.b),
-            (self.a as f64) / 255.0,
         ]
     }
 }
@@ -790,8 +791,6 @@ mod tests {
 // Accept integer 0–255 or percentages (e.g., rgb(100% 0% 0%)).
 
 // Alpha accepts 0..1 floats or 0..255 ints.
-
-// Case-insensitive; trim whitespace; good errors.
 
 // Conversions
 
