@@ -199,16 +199,16 @@ impl Color {
     pub fn from_hex6(hex6: &str) -> Result<Self, ParseIntError> {
         if let Some(stripped) = hex6.strip_prefix('#') {
             Ok(Self {
-                r: stripped[0..2].parse::<u8>()?,
-                g: stripped[2..4].parse::<u8>()?,
-                b: stripped[4..6].parse::<u8>()?,
+                r: u8::from_str_radix(stripped[0..2].into(), 16)?,
+                g: u8::from_str_radix(stripped[2..4].into(), 16)?,
+                b: u8::from_str_radix(stripped[4..6].into(), 16)?,
                 a: 255,
             })
         } else {
             Ok(Self {
-                r: hex6[0..2].parse::<u8>()?,
-                g: hex6[2..4].parse::<u8>()?,
-                b: hex6[4..6].parse::<u8>()?,
+                r: u8::from_str_radix(hex6[0..2].into(), 16)?,
+                g: u8::from_str_radix(hex6[2..4].into(), 16)?,
+                b: u8::from_str_radix(hex6[4..6].into(), 16)?,
                 a: 255,
             })
         }
@@ -239,17 +239,17 @@ impl Color {
     pub fn from_hex8(hex8: &str) -> Result<Self, ParseIntError> {
         if let Some(stripped) = hex8.strip_prefix('#') {
             Ok(Self {
-                r: stripped[0..2].parse::<u8>()?,
-                g: stripped[2..4].parse::<u8>()?,
-                b: stripped[4..6].parse::<u8>()?,
-                a: stripped[6..8].parse::<u8>()?,
+                r: u8::from_str_radix(stripped[0..2].into(), 16)?,
+                g: u8::from_str_radix(stripped[2..4].into(), 16)?,
+                b: u8::from_str_radix(stripped[4..6].into(), 16)?,
+                a: u8::from_str_radix(stripped[6..8].into(), 16)?,
             })
         } else {
             Ok(Self {
-                r: hex8[0..2].parse::<u8>()?,
-                g: hex8[2..4].parse::<u8>()?,
-                b: hex8[4..6].parse::<u8>()?,
-                a: hex8[6..8].parse::<u8>()?,
+                r: u8::from_str_radix(hex8[0..2].into(), 16)?,
+                g: u8::from_str_radix(hex8[2..4].into(), 16)?,
+                b: u8::from_str_radix(hex8[4..6].into(), 16)?,
+                a: u8::from_str_radix(hex8[6..8].into(), 16)?,
             })
         }
     }
