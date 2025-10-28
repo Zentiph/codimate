@@ -89,6 +89,8 @@ impl Default for Color {
 
 impl Color {
     // Linear interpolation in sRGB space; use `lerp_linear` for perceptual correctness.
+    #[must_use]
+    #[inline]
     pub fn lerp(self, other: Color, t: f32) -> Color {
         let t = t.clamp(0.0, 1.0);
         let lerp8 = |a: u8, b: u8| -> u8 {
@@ -106,6 +108,8 @@ impl Color {
     }
 
     // Linear interp in linear space
+    #[must_use]
+    #[inline]
     pub fn lerp_linear<T: Float>(self, other: Color, t: T) -> Color {
         let t = t.clamp01();
         let a = self.into_linear::<T>();
@@ -123,6 +127,8 @@ impl Color {
     // Porter-Duff "over" in linear space
     // for speed over accuracy, use `over_srgb_fast`
     // https://keithp.com/~keithp/porterduff/p253-porter.pdf
+    #[must_use]
+    #[inline]
     pub fn over<T: Float>(self, bg: Color) -> Color {
         let fg = self.into_linear::<T>();
         let bg = bg.into_linear::<T>();
@@ -143,6 +149,8 @@ impl Color {
     }
 
     // Faster (but slightly less accurate) "over" in sRGB space.
+    #[must_use]
+    #[inline]
     pub fn over_srgb_fast(self, mut dst: Color) -> Color {
         let sa = self.a as f32 / 255.0;
         if sa <= 0.0 {
@@ -170,6 +178,8 @@ impl Color {
         dst
     }
 
+    #[must_use]
+    #[inline]
     pub fn with_alpha(self, a: u8) -> Self {
         Self {
             r: self.r,
@@ -179,6 +189,7 @@ impl Color {
         }
     }
 
+    #[inline]
     pub fn from_rgb(rgb: [u8; 3]) -> Self {
         Self {
             r: rgb[0],
@@ -188,10 +199,13 @@ impl Color {
         }
     }
 
+    #[must_use]
+    #[inline]
     pub fn into_rgb(self) -> [u8; 3] {
         [self.r, self.g, self.b]
     }
 
+    #[inline]
     pub fn from_rgba(rgba: [u8; 4]) -> Self {
         Self {
             r: rgba[0],
@@ -201,18 +215,26 @@ impl Color {
         }
     }
 
+    #[must_use]
+    #[inline]
     pub fn into_rgba(self) -> [u8; 4] {
         [self.r, self.g, self.b, self.a]
     }
 
+    #[must_use]
+    #[inline]
     pub fn into_hex6(self) -> String {
         format!("{:02x}{:02x}{:02x}", self.r, self.g, self.b)
     }
 
+    #[must_use]
+    #[inline]
     pub fn into_hex8(self) -> String {
         format!("{:02x}{:02x}{:02x}{:02x}", self.r, self.g, self.b, self.a)
     }
 
+    #[must_use]
+    #[inline]
     pub fn from_hsl_f32(hsl: [f32; 3]) -> Self {
         // solution from https://www.rapidtables.com/convert/color/hsl-to-rgb.html
         let (mut h, s, l) = (hsl[0], hsl[1] / 100.0, hsl[2] / 100.0);
@@ -239,6 +261,8 @@ impl Color {
         }
     }
 
+    #[must_use]
+    #[inline]
     pub fn from_hsl_f64(hsl: [f64; 3]) -> Self {
         // solution from https://www.rapidtables.com/convert/color/hsl-to-rgb.html
         let (mut h, s, l) = (hsl[0], hsl[1] / 100.0, hsl[2] / 100.0);
@@ -265,6 +289,8 @@ impl Color {
         }
     }
 
+    #[must_use]
+    #[inline]
     pub fn from_hsla_f32(hsla: [f32; 4]) -> Self {
         // solution from https://www.rapidtables.com/convert/color/hsl-to-rgb.html
         let (h, s, l) = (
@@ -294,6 +320,8 @@ impl Color {
         }
     }
 
+    #[must_use]
+    #[inline]
     pub fn from_hsla_f64(hsla: [f64; 4]) -> Self {
         // solution from https://www.rapidtables.com/convert/color/hsl-to-rgb.html
         let (h, s, l) = (
@@ -323,6 +351,8 @@ impl Color {
         }
     }
 
+    #[must_use]
+    #[inline]
     pub fn into_hsl_f32(self) -> [f32; 3] {
         // solution from https://www.rapidtables.com/convert/color/rgb-to-hsl.html
         let r_prime = (self.r as f32) / 255.0;
@@ -357,6 +387,8 @@ impl Color {
         [h, s, l]
     }
 
+    #[must_use]
+    #[inline]
     pub fn into_hsl_f64(self) -> [f64; 3] {
         // solution from https://www.rapidtables.com/convert/color/rgb-to-hsl.html
         let r_prime = (self.r as f64) / 255.0;
@@ -391,6 +423,8 @@ impl Color {
         [h, s, l]
     }
 
+    #[must_use]
+    #[inline]
     pub fn into_hsla_f32(self) -> [f32; 4] {
         // solution from https://www.rapidtables.com/convert/color/rgb-to-hsl.html
         let r_prime = (self.r as f32) / 255.0;
@@ -425,6 +459,8 @@ impl Color {
         [h, s, l, (self.a as f32) / 255.0]
     }
 
+    #[must_use]
+    #[inline]
     pub fn into_hsla_f64(self) -> [f64; 4] {
         // solution from https://www.rapidtables.com/convert/color/rgb-to-hsl.html
         let r_prime = (self.r as f64) / 255.0;
@@ -460,6 +496,7 @@ impl Color {
     }
 
     // encode linear light -> sRGB (D65, IEC 61966-2-1)
+    #[must_use]
     #[inline]
     pub fn from_linear<T: Float>(lin: [T; 4]) -> Self {
         Self {
@@ -474,6 +511,7 @@ impl Color {
     }
 
     // decode sRGB -> linear light (D65, IEC 61966-2-1)
+    #[must_use]
     #[inline]
     pub fn into_linear<T: Float>(self) -> [T; 4] {
         [
@@ -484,6 +522,8 @@ impl Color {
         ]
     }
 
+    #[must_use]
+    #[inline]
     pub fn from_oklab<T: Float>(ok: [T; 3]) -> Self {
         // source: https://bottosson.github.io/posts/oklab/
 
@@ -536,6 +576,8 @@ impl Color {
         ])
     }
 
+    #[must_use]
+    #[inline]
     pub fn into_oklab<T: Float>(self) -> [T; 3] {
         // source: https://bottosson.github.io/posts/oklab/
 

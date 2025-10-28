@@ -20,17 +20,24 @@ pub trait Float: Copy + PartialOrd {
     const ONE: Self;
 
     fn from_f32(x: f32) -> Self;
+
     fn from_f64(x: f64) -> Self;
+
     fn to_f32(self) -> f32;
 
     fn add(self, rhs: Self) -> Self;
+
     fn sub(self, rhs: Self) -> Self;
+
     fn mul(self, rhs: Self) -> Self;
+
     fn div(self, rhs: Self) -> Self;
 
     fn powf(self, e: Self) -> Self;
+
     fn cbrt(self) -> Self;
     /// Clamp this Float between 0.0 and 1.0
+    #[inline]
     fn clamp01(self) -> Self {
         clamp_generic(self, Self::ZERO, Self::ONE)
     }
