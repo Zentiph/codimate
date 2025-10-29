@@ -249,11 +249,29 @@ impl Color {
 
     #[must_use]
     #[inline]
+    pub fn darken_hsl(self, amt: ColorFloat) -> Self {
+        let [h, s, l] = self.into_hsl();
+        let l = (l - amt).clamp(0.0, 1.0);
+        Self::from_hsl([h, s, l])
+    }
+
+    #[must_use]
+    #[inline]
     pub fn lighten_linear(self, amt: ColorFloat) -> Self {
         let mut c = self.into_linear();
         c[0] = (c[0] + amt).clamp(0.0, 1.0);
         c[1] = (c[1] + amt).clamp(0.0, 1.0);
         c[2] = (c[2] + amt).clamp(0.0, 1.0);
+        Self::from_linear(c)
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn darken_linear(self, amt: ColorFloat) -> Self {
+        let mut c = self.into_linear();
+        c[0] = (c[0] - amt).clamp(0.0, 1.0);
+        c[1] = (c[1] - amt).clamp(0.0, 1.0);
+        c[2] = (c[2] - amt).clamp(0.0, 1.0);
         Self::from_linear(c)
     }
 
@@ -660,8 +678,6 @@ impl fmt::Display for Color {
 
 // Core type & representations
 
-// Color as sRGB 8-bit, straight alpha (r,g,b,a : u8). [mostly done. test that this works]
-
 // Parsing & printing
 
 // CSS funcs (modern syntax):
@@ -675,16 +691,6 @@ impl fmt::Display for Color {
 // Accept integer 0–255 or percentages (e.g., rgb(100% 0% 0%)).
 
 // Alpha accepts 0..1 floats or 0..255 ints.
-
-// Conversions
-
-// Compositing
-
-// (Optional) other blend modes: multiply, screen, overlay, soft-light.
-
-// Interpolation
-
-// (Bonus) lerp_oklch to avoid hue/brightness drift in gradients.
 
 // Utilities
 
