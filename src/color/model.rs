@@ -67,6 +67,18 @@ fn encode_srgb<T: Float>(lin: T) -> u8 {
     y as u8
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BlendMode {
+    /// Standard Porter-Duff over (equivalent to `Color::over`)
+    Normal,
+    Multiply,
+    Screen,
+    Overlay,
+    Darken,
+    Lighten,
+    // TODO: Add SoftLight, HardLight, ColorDodge, ColorBurn, etc.
+}
+
 // stores sRGB under the hood, with lots of conversion funcs
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Color {
@@ -146,6 +158,43 @@ impl Color {
         };
 
         Color::from_linear::<T>([out_r, out_g, out_b, out_a])
+    }
+
+    // Blend this color over a bg using the given blend mode
+    // Math done in linear space, output encoded back to sRGB with straight alpha
+    #[must_use]
+    pub fn blend_over(self, bg: Color, mode: BlendMode) -> Color {
+        use BlendMode::*;
+
+        if self.a == 0 {
+            return bg;
+        }
+        if matches!(mode, Normal) || bg.a == 0 {
+            return self.over::<f32>(bg);
+        }
+
+        let [sr, sg, sb, sa] = self.into_linear::<f32>();
+        let [dr, dg, db, da] = bg.into_linear::<f32>();
+
+        let br = Self::blend_channel(mode, sr, dr);
+        let bg_ = Self::blend_channel(mode, sg, dg);
+        let bb = Self::blend_channel(mode, sb, db);
+
+        // Porter–Duff combination in premultiplied form
+        let a_out = sa + da - sa * da;
+        let cr_p = dr * da * (1.0 - sa) + sr * sa * (1.0 - da) + sa * da * br;
+        let cg_p = dg * da * (1.0 - sa) + sg * sa * (1.0 - da) + sa * da * bg_;
+        let cb_p = db * da * (1.0 - sa) + sb * sa * (1.0 - da) + sa * da * bb;
+
+        // Un-pre-multiply (if alpha zero, return transparent black)
+        let (cr, cg, cb, ca) = if a_out > 0.0 {
+            (cr_p / a_out, cg_p / a_out, cb_p / a_out, a_out)
+        } else {
+            (0.0, 0.0, 0.0, 0.0)
+        };
+
+        // Encode back to sRGB u8 (your encoders already clamp)
+        Color::from_linear::<f32>([cr, cg, cb, ca])
     }
 
     // Faster (but slightly less accurate) "over" in sRGB space.
@@ -672,6 +721,25 @@ impl Color {
                 .add(c0_7827717662.mul(m))
                 .sub(c0_8086757660.mul(s)),
         ]
+    }
+
+    #[inline]
+    fn blend_channel(mode: BlendMode, s: f32, d: f32) -> f32 {
+        use BlendMode::*;
+        match mode {
+            Normal => s,
+            Multiply => s * d,
+            Screen => 1.0 - (1.0 - s) * (1.0 - d),
+            Overlay => {
+                if d <= 0.5 {
+                    2.0 * s * d
+                } else {
+                    1.0 - 2.0 * (1.0 - s) * (1.0 - d)
+                }
+            }
+            Darken => s.min(d),
+            Lighten => s.max(d),
+        }
     }
 }
 
