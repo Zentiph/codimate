@@ -79,6 +79,42 @@ impl Color {
         ])
     }
 
+    pub fn lerp_oklch(self, other: Color, t: ColorFloat) -> Color {
+        let t = t.clamp(0.0, 1.0);
+        let [l1, c1, h1] = self.into_oklch();
+        let [l2, c2, h2] = other.into_oklch();
+
+        // If one is near gray, carry the other hue to avoid wild spins
+        let (h1, h2) = if c1 < 1e-5 {
+            (h2, h2)
+        } else if c2 < 1e-5 {
+            (h1, h1)
+        } else {
+            (h1, h2)
+        };
+
+        // shortest hue delta
+        let mut dh = h2 - h1;
+        if dh > 180.0 {
+            dh -= 360.0;
+        }
+        if dh <= -180.0 {
+            dh += 360.0;
+        }
+
+        let l = l1 + (l2 - l1) * t;
+        let c = c1 + (c2 - c1) * t;
+        let mut h = h1 + dh * t;
+        if h < 0.0 {
+            h += 360.0;
+        }
+        if h >= 360.0 {
+            h -= 360.0;
+        }
+
+        Self::from_oklch([l, c.max(0.0), h])
+    }
+
     // Porter-Duff "over" in linear space
     // for speed over accuracy, use `over_srgb_fast`
     // https://keithp.com/~keithp/porterduff/p253-porter.pdf
@@ -486,12 +522,12 @@ impl Color {
 
     #[must_use]
     #[inline]
-    pub fn from_oklab(ok: [ColorFloat; 3]) -> Self {
+    pub fn from_oklab(lab: [ColorFloat; 3]) -> Self {
         // source: https://bottosson.github.io/posts/oklab/
 
-        let l_ = ok[0] + 0.39633778 * ok[1] + 0.21580376 * ok[2];
-        let m_ = ok[0] - 0.105561346 * ok[1] - 0.06385417 * ok[2];
-        let s_ = ok[0] - 0.08948418 * ok[1] - 1.2914856 * ok[2];
+        let l_ = lab[0] + 0.39633778 * lab[1] + 0.21580376 * lab[2];
+        let m_ = lab[0] - 0.105561346 * lab[1] - 0.06385417 * lab[2];
+        let s_ = lab[0] - 0.08948418 * lab[1] - 1.2914856 * lab[2];
 
         let l = l_ * l_ * l_;
         let m = m_ * m_ * m_;
@@ -521,6 +557,74 @@ impl Color {
             1.9779985 * l - 2.4285922 * m + 0.4505937 * s,
             0.025904037 * l + 0.78277177 * m - 0.80867577 * s,
         ]
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn from_oklch(lch: [ColorFloat; 3]) -> Self {
+        // Gamut mapping to keep rgb valid when converting
+        // current method: chroma reduction at fixed L and H
+        // switch to Björn Ottosson's "gamut mapping in OKLCH"
+        // in the future if perfect ramping needed
+        let within = |rgb: [ColorFloat; 3]| {
+            rgb[0] >= 0.0
+                && rgb[0] <= 1.0
+                && rgb[1] >= 0.0
+                && rgb[1] <= 1.0
+                && rgb[2] >= 0.0
+                && rgb[2] <= 1.0
+        };
+        let to_srgb = |lch: [ColorFloat; 3]| {
+            let lin = Self::from_oklab(Self::oklch_to_oklab(lch)).into_linear();
+            [lin[0], lin[1], lin[2]]
+        };
+
+        if within(to_srgb(lch)) {
+            return Self::from_oklab(Self::oklch_to_oklab(lch));
+        }
+
+        // shrink c
+        let (mut lo, mut hi) = (0.0f32, lch[1]);
+        for _ in 0..24 {
+            // ~1e-7 precision
+            let mid = 0.5 * (lo + hi);
+            let test = [lch[0], mid, lch[2]];
+            if within(to_srgb(test)) {
+                lo = mid;
+            } else {
+                hi = mid;
+            }
+        }
+
+        Self::from_oklab(Self::oklch_to_oklab([lch[0], lo, lch[2]]))
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn into_oklch(self) -> [ColorFloat; 3] {
+        Self::oklab_to_oklch(self.into_oklab())
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn oklab_to_oklch(ok: [ColorFloat; 3]) -> [ColorFloat; 3] {
+        let (l, a, b) = (ok[0], ok[1], ok[2]);
+        let c = (a * a + b * b).sqrt();
+        let mut h = b.atan2(a).to_degrees();
+        if h < 0.0 {
+            h += 360.0;
+        }
+        [l, c, h]
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn oklch_to_oklab(lch: [ColorFloat; 3]) -> [ColorFloat; 3] {
+        let (l, c, h) = (lch[0], lch[1], lch[2]);
+        let h = h.to_radians();
+        let a = c * h.cos();
+        let b = c * h.sin();
+        [l, a, b]
     }
 
     // --- private methods --- //
