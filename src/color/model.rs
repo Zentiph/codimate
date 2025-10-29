@@ -180,6 +180,24 @@ impl Color {
 
     #[must_use]
     #[inline]
+    pub fn relative_luminance(self) -> f32 {
+        let [r, g, b, _] = self.into_linear::<f32>();
+        0.2126 * r + 0.7152 * g + 0.0722 * b
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn contrast_ratio(self, other: Color) -> f32 {
+        let (l1, l2) = {
+            let a = self.relative_luminance();
+            let b = other.relative_luminance();
+            if a >= b { (a, b) } else { (b, a) }
+        };
+        (l1 + 0.05) / (l2 + 0.05)
+    }
+
+    #[must_use]
+    #[inline]
     pub fn with_alpha(self, a: u8) -> Self {
         Self {
             r: self.r,
@@ -232,6 +250,8 @@ impl Color {
     pub fn into_hex8(self) -> String {
         format!("{:02x}{:02x}{:02x}{:02x}", self.r, self.g, self.b, self.a)
     }
+
+    // TODO make rest of the f32/f64 funcs generic with Float
 
     #[must_use]
     #[inline]

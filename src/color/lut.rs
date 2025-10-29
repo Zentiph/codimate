@@ -5,8 +5,6 @@
 
 #![allow(dead_code)]
 
-// Compile-time params
-
 use std::sync::OnceLock;
 
 /// linear -> sRGB table size
