@@ -198,6 +198,24 @@ impl Color {
 
     #[must_use]
     #[inline]
+    pub fn lighten_hsl(self, amt: f32) -> Self {
+        let [h, s, l] = self.into_hsl_f32();
+        let l = (l + amt).clamp(0.0, 1.0);
+        Self::from_hsl_f32([h, s, l])
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn lighten_linear<T: Float>(self, amt: T) -> Self {
+        let mut c = self.into_linear::<T>();
+        c[0] = (c[0].add(amt)).clamp01();
+        c[1] = (c[1].add(amt)).clamp01();
+        c[2] = (c[2].add(amt)).clamp01();
+        Self::from_linear::<T>(c)
+    }
+
+    #[must_use]
+    #[inline]
     pub fn with_alpha(self, a: u8) -> Self {
         Self {
             r: self.r,
