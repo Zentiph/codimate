@@ -29,3 +29,6 @@ See [the license](LICENSE) for more details.
 Grant Sanderson (aka 3blue1brown)
 * For creating [manim](https://github.com/3b1b/manim), the main inspiration for this project.
 * For amplifying our love for math and video-learning adventures.
+2swap
+* For creating [swaptube](https://github.com/2swap/swaptube), another inspiration for this project.
+* For creating inspiring and beautiful algorithm visualizations.
