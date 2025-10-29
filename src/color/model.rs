@@ -23,6 +23,7 @@ pub enum BlendMode {
 }
 
 // stores sRGB under the hood, with lots of conversion funcs
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Color {
     pub r: u8,
@@ -111,6 +112,8 @@ impl Color {
         if h >= 360.0 {
             h -= 360.0;
         }
+
+        // TODO: consider how to lerp alphas?
 
         Self::from_oklch([l, c.max(0.0), h])
     }

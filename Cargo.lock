@@ -180,6 +180,7 @@ dependencies = [
  "image",
  "imageproc",
  "pyo3",
+ "serde",
 ]
 
 [[package]]
