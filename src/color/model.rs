@@ -35,18 +35,19 @@ pub struct Color {
     pub a: u8,
 }
 
-impl Default for Color {
-    fn default() -> Self {
-        Self {
-            r: 0,
-            g: 0,
-            b: 0,
-            a: 255,
-        }
-    }
-}
-
 impl Color {
+    pub const TRANSPARENT: Self = Self::new(0, 0, 0, 0);
+    pub const BLACK: Self = Self::new(0, 0, 0, 255);
+    pub const RED: Self = Self::new(255, 0, 0, 255);
+    pub const GREEN: Self = Self::new(0, 255, 0, 255);
+    pub const BLUE: Self = Self::new(0, 0, 255, 255);
+    pub const WHITE: Self = Self::new(255, 255, 255, 255);
+
+    #[inline]
+    pub const fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
+        Self { r, g, b, a }
+    }
+
     // Linear interpolation in sRGB space; use `lerp_linear` for perceptual correctness.
     #[must_use]
     #[inline]
@@ -186,6 +187,10 @@ impl Color {
     #[must_use]
     #[inline]
     pub fn over_srgb_fast(self, mut dst: Color) -> Color {
+        if dst.a == 0 {
+            dst = self;
+        }
+
         let sa = self.a as ColorFloat / 255.0;
         if sa <= 0.0 {
             return dst;
@@ -250,7 +255,7 @@ impl Color {
 
     #[must_use]
     #[inline]
-    pub fn with_alpha(self, a: u8) -> Self {
+    pub const fn with_alpha(self, a: u8) -> Self {
         Self {
             r: self.r,
             g: self.g,
@@ -260,7 +265,7 @@ impl Color {
     }
 
     #[inline]
-    pub fn from_rgb(rgb: [u8; 3]) -> Self {
+    pub const fn from_rgb(rgb: [u8; 3]) -> Self {
         Self {
             r: rgb[0],
             g: rgb[1],
@@ -271,12 +276,12 @@ impl Color {
 
     #[must_use]
     #[inline]
-    pub fn into_rgb(self) -> [u8; 3] {
+    pub const fn into_rgb(self) -> [u8; 3] {
         [self.r, self.g, self.b]
     }
 
     #[inline]
-    pub fn from_rgba(rgba: [u8; 4]) -> Self {
+    pub const fn from_rgba(rgba: [u8; 4]) -> Self {
         Self {
             r: rgba[0],
             g: rgba[1],
@@ -287,7 +292,7 @@ impl Color {
 
     #[must_use]
     #[inline]
-    pub fn into_rgba(self) -> [u8; 4] {
+    pub const fn into_rgba(self) -> [u8; 4] {
         [self.r, self.g, self.b, self.a]
     }
 
@@ -695,12 +700,18 @@ impl Color {
     }
 }
 
+impl Default for Color {
+    fn default() -> Self {
+        Color::new(0, 0, 0, 255)
+    }
+}
+
 impl fmt::Display for Color {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // default to RGBA hex for lossless stringification
         write!(
             f,
-            "#{:02x}{:02x}{:02x}{:02x}",
+            "#{:02X}{:02X}{:02X}{:02X}",
             self.r, self.g, self.b, self.a
         )
     }

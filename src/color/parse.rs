@@ -207,6 +207,7 @@ pub fn parse_color(mut s: &str) -> Result<Color, ColorParseError> {
     // HSL: hsl(210 50% 40% / 0.7)
     // Plan: add a small tokenizer that accepts commas or spaces, and an optional / alpha token.
     // We already have HSL converters, so once the parser extracts (h, s%, l%, a?), we can call from_hsl.
+    // Also allow for things like rgb(+255, +255, +255) (CSS allowed)
     let lower = s.to_ascii_lowercase();
     if let Some(args) = lower.strip_prefix("rgb(").and_then(|x| x.strip_suffix(')')) {
         return parse_css_rgb(args);
