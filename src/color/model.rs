@@ -117,9 +117,13 @@ impl Color {
             h -= 360.0;
         }
 
-        // TODO: consider how to lerp alphas?
+        // straight linear lerp for alpha
+        let a1 = self.a as ColorFloat / 255.0;
+        let a2 = other.a as ColorFloat / 255.0;
+        let a = a1 + (a2 - a1) * t;
 
         Self::from_oklch([l, c.max(0.0), h])
+            .with_alpha((a.clamp(0.0, 1.0) * 255.0 + 0.5).floor() as u8)
     }
 
     // Porter-Duff "over" in linear space
@@ -310,41 +314,11 @@ impl Color {
         format!("{:02x}{:02x}{:02x}{:02x}", self.r, self.g, self.b, self.a)
     }
 
-    // TODO make rest of the f32/f64 funcs generic with Float
-
     #[must_use]
     #[inline]
     pub fn from_hsl(hsl: [ColorFloat; 3]) -> Self {
         // solution from https://www.rapidtables.com/convert/color/hsl-to-rgb.html
         let (h, s, l) = (hsl[0].rem_euclid(360.0), hsl[1] / 100.0, hsl[2] / 100.0);
-
-        let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
-        let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
-        let m = l - c / 2.0;
-
-        let (r_prime, g_prime, b_prime) = match h {
-            0.0..60.0 => (c, x, 0.0),
-            60.0..120.0 => (x, c, 0.0),
-            120.0..180.0 => (0.0, c, x),
-            180.0..240.0 => (0.0, x, c),
-            240.0..300.0 => (x, 0.0, c),
-            _ => (c, 0.0, x), // 300.0..360.0
-        };
-
-        Self {
-            r: ((r_prime + m) * 255.0 + 0.5).floor() as u8,
-            g: ((g_prime + m) * 255.0 + 0.5).floor() as u8,
-            b: ((b_prime + m) * 255.0 + 0.5).floor() as u8,
-            a: 255,
-        }
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn from_hsl_f64(hsl: [f64; 3]) -> Self {
-        // solution from https://www.rapidtables.com/convert/color/hsl-to-rgb.html
-        let (mut h, s, l) = (hsl[0], hsl[1] / 100.0, hsl[2] / 100.0);
-        h = h.rem_euclid(360.0);
 
         let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
         let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
@@ -468,42 +442,6 @@ impl Color {
         };
 
         [h, s, l, (self.a as ColorFloat) / 255.0]
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn into_hsla_f64(self) -> [f64; 4] {
-        // solution from https://www.rapidtables.com/convert/color/rgb-to-hsl.html
-        let r_prime = (self.r as f64) / 255.0;
-        let g_prime = (self.g as f64) / 255.0;
-        let b_prime = (self.b as f64) / 255.0;
-
-        let c_max = r_prime.max(g_prime).max(b_prime);
-        let c_min = r_prime.min(g_prime).min(b_prime);
-
-        let delta = c_max - c_min;
-        // prevent tiny negative zero from noise
-        let delta = if delta.abs() < 1e-8 { 0.0 } else { delta };
-
-        let h = if delta == 0.0 {
-            0.0
-        } else {
-            match c_max {
-                _ if r_prime == c_max => 60.0 * ((g_prime - b_prime) / delta).rem_euclid(6.0),
-                _ if g_prime == c_max => 60.0 * ((b_prime - r_prime) / delta + 2.0),
-                _ => 60.0 * ((r_prime - g_prime) / delta + 4.0), // b_prime == c_max
-            }
-        };
-
-        let l = (c_max + c_min) / 2.0;
-
-        let s = if delta == 0.0 {
-            0.0
-        } else {
-            delta / (1.0 - (2.0 * l - 1.0).abs())
-        };
-
-        [h, s, l, (self.a as f64) / 255.0]
     }
 
     // encode linear light -> sRGB (D65, IEC 61966-2-1)
