@@ -21,7 +21,16 @@ lto = "thin"
 codegen-units = 1
 
 [features]
-default = []
-srgb_lut = []               # bool
-color_double_precision = []
+default = ["std"]
+# Enable the Rust standard library. On by default for convenience.
+std = ["alloc"]
+# Things that need a heap but not full std
+alloc = []
+# Optional: serde support (works in no_std)
 serde = ["dep:serde"]
+
+# Whether to use a lookup table for srgb conversions.
+# Useful if the CPU is being used for lots of calculations rather than the GPU.
+srgb_lut = []
+# Whether to use f64s for all color conversion functions rather than f32.
+color_double_precision = []

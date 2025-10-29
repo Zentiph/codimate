@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::fmt;
+use core::fmt;
 
 use crate::color::model::Color;
 
@@ -16,15 +16,17 @@ pub enum ColorParseError {
 impl fmt::Display for ColorParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use ColorParseError::*;
-        match self {
-            Empty => write!(f, "empty color string"),
-            InvalidLength => write!(f, "invalid hex length"),
-            InvalidHex => write!(f, "invalid hex digits"),
-            InvalidFunc => write!(f, "invalid rgb()/rgba() function"),
-            OutOfRange => write!(f, "component out of range"),
-        }
+        let msg = match self {
+            Empty => "empty color string",
+            InvalidLength => "invalid hex length",
+            InvalidHex => "invalid hex digits",
+            InvalidFunc => "invalid rgb()/rgba() function",
+            OutOfRange => "component out of range",
+        };
+        f.write_str(msg)
     }
 }
+#[cfg(feature = "std")]
 impl std::error::Error for ColorParseError {}
 
 /// Parse a hex color from a string.
@@ -219,7 +221,7 @@ pub fn parse_color(mut s: &str) -> Result<Color, ColorParseError> {
     Err(InvalidFunc)
 }
 
-impl std::str::FromStr for Color {
+impl core::str::FromStr for Color {
     type Err = ColorParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         parse_color(s)

@@ -1,3 +1,5 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
 #[cfg(feature = "srgb_lut")]
 pub mod lut;
 pub mod model;

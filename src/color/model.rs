@@ -8,6 +8,9 @@
 
 use std::fmt::{self};
 
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 use crate::color::ColorFloat;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -290,13 +293,15 @@ impl Color {
 
     #[must_use]
     #[inline]
-    pub fn into_hex6(self) -> String {
+    #[cfg(feature = "alloc")]
+    pub fn into_hex6(self) -> alloc::string::String {
         format!("{:02x}{:02x}{:02x}", self.r, self.g, self.b)
     }
 
     #[must_use]
     #[inline]
-    pub fn into_hex8(self) -> String {
+    #[cfg(feature = "alloc")]
+    pub fn into_hex8(self) -> alloc::string::String {
         format!("{:02x}{:02x}{:02x}{:02x}", self.r, self.g, self.b, self.a)
     }
 
