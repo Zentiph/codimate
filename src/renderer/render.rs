@@ -5,32 +5,70 @@ every submodule that's a part of src/folder is prefixed by crate::folder */
 use crate::{color::model::Color, renderer::frame::Frame};
 
 pub struct Renderer {
-    current: Frame,
+    current: usize,
     queue: Vec<Frame>,
 }
 
 impl Renderer {
+    // doing queue based on index now
     pub fn new(queue: Vec<Frame>) -> Self {
-        todo!("[NOT IMPLEMENTED] waiting on implementation.");
+        Self {
+            current: 0,
+            queue,
+        }
     }
 
-    /// Fill entire frame with a solid color (fast path).
+    /// borrows the current frame and allows us to fuck w it
+    pub fn current(&mut self) -> &Frame {
+        &mut self.queue[self.current]
+    }
+
+    /// moves to the next frame in the queue
+    pub fn advance(&mut self) {
+        // will prolly make this throw an error soon
+        if self.current + 1 < self.queue.len() {return}
+        self.current += 1;
+    }
+
+    /// shitty chunking approach that we have to use frn cuz i'm too lazy to make this on u32. we'll deal w this later
     pub fn clear(&mut self, fb: &mut Frame, color: Color) {
-        todo!("[NOT IMPLEMENTED] waiting on implementation.");
+        let packed = [color.r, color.g, color.b, color.a];
+        
+        for chunk in fb.as_bytes_mut().chunks_exact_mut(4) {
+            chunk.copy_from_slice(&packed);
+        }
     }
 
     /// write one pixel (DONT DO THIS UNLESS WE'RE REALLY PRECISE. spans/rects are way better)
-    pub fn set_pixel(&mut self, fb: &mut Frame, x: usize, y: usize, color: Color) {
-        todo!("[NOT IMPLEMENTED] waiting on implementation.");
+    pub fn set_pixel(&mut self, fb: &mut Frame, x: u16, y: u16, color: Color) {
+        if x >= fb.width() || y >= fb.height() {
+            return;
+        }
+
+        // cast to usize is only for indexing. vecs work off usize is y
+        let x = x as usize;
+        let y = y as usize;
+        let w = fb.width() as usize;
+        let h = fb.height() as usize;
+
+        // offset -> 4 u8s, so y * width + x coord will get you u32 pixel #. 
+        // therefore * 4 will get you u8 red # (then you get green blue and alpha immediately after)
+        let offset = (y * w + x) * 4;
+        let data = fb.as_bytes_mut();
+
+        data[offset] = color.r;
+        data[offset + 1] = color.g;
+        data[offset + 2] = color.b;
+        data[offset + 3] = color.a;
     }
 
     /// plot the entire span of one row
-    pub fn hspan(&mut self, fb: &mut Frame, y: usize, x0: usize, x1: usize, color: Color) {
+    pub fn hspan(&mut self, fb: &mut Frame, y: u16, x0: u16, x1: u16, color: Color) {
         todo!("[NOT IMPLEMENTED] waiting on implementation.");
     }
 
     /// solid rectangle fill
-    pub fn rect(&mut self, x: usize, y: usize, w: usize, h: usize, color: Color) {
+    pub fn rect(&mut self, x: u16, y: u16, w: u16, h: u16, color: Color) {
         todo!("[NOT IMPLEMENTED] waiting on implementation.");
     }
 
