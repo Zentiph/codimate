@@ -1,4 +1,4 @@
-#![allow(dead_code, unused_variables)]
+#![allow(dead_code)]
 
 /* ik this is jank so i'm gonna figure out how to modularize so 
 every submodule that's a part of src/folder is prefixed by crate::folder */
@@ -49,7 +49,6 @@ impl Renderer {
         let x = x as usize;
         let y = y as usize;
         let w = fb.width() as usize;
-        let h = fb.height() as usize;
 
         // offset -> 4 u8s, so y * width + x coord will get you u32 pixel #. 
         // therefore * 4 will get you u8 red # (then you get green blue and alpha immediately after)
@@ -62,14 +61,43 @@ impl Renderer {
         data[offset + 3] = color.a;
     }
 
-    /// plot the entire span of one row
+    /// plot the span of one row from x0 to x1
     pub fn hspan(&mut self, fb: &mut Frame, y: u16, x0: u16, x1: u16, color: Color) {
-        todo!("[NOT IMPLEMENTED] waiting on implementation.");
+        // converting to usize again cuz vectors use it
+        let w = fb.width() as usize;
+        let h = fb.height() as usize;
+        let y = y as usize;
+        if y >= h {
+            return;
+        }
+
+        // get start and end (exclusive btw)
+        let start = x0.min(x1) as usize;
+        let end   = x0.max(x1) as usize;
+        
+        // bounds check (we're gonna eventually just do a precheck before rendering and flag anything that's out of bounds)
+        // cuz doing this for every hspan is SLOW
+        let width = end - start;
+        if width == 0 || start > w || end > w {
+            return;
+        }
+
+        // offset to first pixel in this row, slice the entire thing
+        let start = (y * w + start) * 4;
+        let len = width * 4;
+        let row_slice = &mut fb.as_bytes_mut()[start .. start + len];
+
+        // pack 4 bytes at a time
+        for chunk in row_slice.chunks_exact_mut(4) {
+            chunk.copy_from_slice(&[color.r, color.g, color.b, color.a]);
+        }
     }
 
-    /// solid rectangle fill
-    pub fn rect(&mut self, x: u16, y: u16, w: u16, h: u16, color: Color) {
-        todo!("[NOT IMPLEMENTED] waiting on implementation.");
+    /// solid rectangle fill. legit just hspan for row in rows
+    pub fn rect(&mut self, fb: &mut Frame, x: u16, y: u16, width: u16, height: u16, color: Color) {
+        for _ in y..height {
+            self.hspan(fb, y, x, width, color);
+        }
     }
 
     /// will be used for the draw queue
@@ -78,7 +106,7 @@ impl Renderer {
     }
 
     /// will also be used for the draw queue
-    pub fn end_frame(&mut self, fb: &mut Frame) {
+    pub fn end_frame(&mut self, _fb: &mut Frame) {
         todo!("[NOT IMPLEMENTED] waiting on implementation.");
     }
 }
