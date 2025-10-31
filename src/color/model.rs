@@ -22,7 +22,12 @@ pub enum BlendMode {
     Overlay,
     Darken,
     Lighten,
-    // TODO: Add SoftLight, HardLight, ColorDodge, ColorBurn, etc.
+    ColorDodge,
+    ColorBurn,
+    HardLight,
+    SoftLight,
+    Difference,
+    Exclusion,
 }
 
 // stores sRGB under the hood, with lots of conversion funcs
@@ -637,21 +642,58 @@ impl Color {
     }
 
     #[inline]
-    fn blend_channel(mode: BlendMode, s: ColorFloat, d: ColorFloat) -> ColorFloat {
+    fn blend_channel(mode: BlendMode, b: ColorFloat, s: ColorFloat) -> ColorFloat {
         use BlendMode::*;
+
         match mode {
+            // source: https://www.w3.org/TR/compositing-1/
+            // separable blend modes
             Normal => s,
-            Multiply => s * d,
-            Screen => 1.0 - (1.0 - s) * (1.0 - d),
-            Overlay => {
-                if d <= 0.5 {
-                    2.0 * s * d
+            Multiply => b * s,
+            Screen => b + s - (b * s),
+            Overlay => Self::blend_channel(HardLight, b, s),
+            Darken => b.min(s),
+            Lighten => b.max(s),
+            ColorDodge => {
+                if b == 0.0 {
+                    0.0
+                } else if s == 1.0 {
+                    1.0
                 } else {
-                    1.0 - 2.0 * (1.0 - s) * (1.0 - d)
+                    (1.0 as ColorFloat).min(b / (1.0 - s))
                 }
             }
-            Darken => s.min(d),
-            Lighten => s.max(d),
+            ColorBurn => {
+                if b == 1.0 {
+                    1.0
+                } else if s == 0.0 {
+                    0.0
+                } else {
+                    1.0 - (1.0 as ColorFloat).min((1.0 - b) / s)
+                }
+            }
+            HardLight => {
+                if s <= 0.5 {
+                    Self::blend_channel(Multiply, b, 2.0 * s)
+                } else {
+                    Self::blend_channel(Screen, b, 2.0 * s - 1.0)
+                }
+            }
+            SoftLight => {
+                if s <= 0.5 {
+                    b - (1.0 - 2.0 * s) * b * (1.0 - b)
+                } else {
+                    let d = if b <= 0.25 {
+                        ((16.0 * b - 12.0) * b + 4.0) * b
+                    } else {
+                        b.sqrt()
+                    };
+                    b + (2.0 * s - 1.0) * (d - b)
+                }
+            }
+            Difference => (b - s).abs(),
+            Exclusion => b + s - 2.0 * b * s,
+            // non-separable blend modes
         }
     }
 }
