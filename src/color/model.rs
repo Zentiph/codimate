@@ -53,6 +53,7 @@ impl Color {
     pub const BLUE: Self = Self::new(0, 0, 255, 255);
     pub const WHITE: Self = Self::new(255, 255, 255, 255);
 
+    #[must_use]
     #[inline]
     pub const fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self { r, g, b, a }
@@ -94,6 +95,8 @@ impl Color {
         ])
     }
 
+    #[must_use]
+    #[inline]
     pub fn lerp_oklch(self, other: Color, t: ColorFloat) -> Color {
         let t = t.clamp(0.0, 1.0);
         let [l1, c1, h1] = self.into_oklch();
@@ -163,6 +166,7 @@ impl Color {
     // Blend this color over a bg using the given blend mode
     // Math done in linear space, output encoded back to sRGB with straight alpha
     #[must_use]
+    #[inline]
     pub fn blend_over(self, bg: Color, mode: BlendMode) -> Color {
         use BlendMode::*;
 
@@ -296,6 +300,7 @@ impl Color {
         }
     }
 
+    #[must_use]
     #[inline]
     pub const fn from_rgb(rgb: [u8; 3]) -> Self {
         Self {
@@ -312,6 +317,7 @@ impl Color {
         [self.r, self.g, self.b]
     }
 
+    #[must_use]
     #[inline]
     pub const fn from_rgba(rgba: [u8; 4]) -> Self {
         Self {
@@ -647,11 +653,13 @@ impl Color {
     }
 
     // helpers for non-separable blend modes
+    #[inline]
     fn lum(c: [ColorFloat; 3]) -> ColorFloat {
         let [r, g, b] = c;
         0.3 * r + 0.59 * g + 0.11 * b
     }
 
+    #[inline]
     fn clip_color(c: [ColorFloat; 3]) -> [ColorFloat; 3] {
         let [r, g, b] = c;
         let l = Self::lum(c);
@@ -674,17 +682,20 @@ impl Color {
         }
     }
 
+    #[inline]
     fn set_lum(c: [ColorFloat; 3], l: ColorFloat) -> [ColorFloat; 3] {
         let [r, g, b] = c;
         let d = l - Self::lum(c);
         Self::clip_color([r + d, g + d, b + d])
     }
 
+    #[inline]
     fn sat(c: [ColorFloat; 3]) -> ColorFloat {
         let [r, g, b] = c;
         r.max(g).max(b) - r.min(g).min(b)
     }
 
+    #[inline]
     fn set_sat(c: [ColorFloat; 3], s: ColorFloat) -> [ColorFloat; 3] {
         let [r, g, b] = c;
         let max: ColorFloat;
