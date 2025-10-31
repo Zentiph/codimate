@@ -180,9 +180,7 @@ impl Color {
         let [sr, sg, sb, sa] = self.into_linear();
         let [dr, dg, db, da] = bg.into_linear();
 
-        let br = Self::blend_channel(mode, sr, dr);
-        let bg_ = Self::blend_channel(mode, sg, dg);
-        let bb = Self::blend_channel(mode, sb, db);
+        let [br, bg_, bb] = Self::blend_channel(mode, [sr, sg, sb], [dr, dg, db]);
 
         // Porter–Duff combination in premultiplied form
         let a_out = sa + da - sa * da;
@@ -781,20 +779,38 @@ impl Color {
         [out_r, out_g, out_b]
     }
 
+    /// Combine two colors with a blend function.
+    fn blend<F>(backdrop: &[ColorFloat; 3], source: &[ColorFloat; 3], mut f: F) -> [ColorFloat; 3]
+    where
+        F: FnMut(ColorFloat, ColorFloat) -> ColorFloat,
+    {
+        backdrop
+            .iter()
+            .zip(source)
+            .map(|(&b, &s)| f(b, s))
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap()
+    }
+
     #[inline]
-    fn blend_channel(mode: BlendMode, b: ColorFloat, s: ColorFloat) -> ColorFloat {
+    fn blend_channel(
+        mode: BlendMode,
+        backdrop: [ColorFloat; 3],
+        source: [ColorFloat; 3],
+    ) -> [ColorFloat; 3] {
         use BlendMode::*;
 
         match mode {
             // source: https://www.w3.org/TR/compositing-1/
             // separable blend modes
-            Normal => s,
-            Multiply => b * s,
-            Screen => b + s - (b * s),
-            Overlay => Self::blend_channel(HardLight, b, s),
-            Darken => b.min(s),
-            Lighten => b.max(s),
-            ColorDodge => {
+            Normal => source,
+            Multiply => Self::blend(&backdrop, &source, |b, s| b * s),
+            Screen => Self::blend(&backdrop, &source, |b, s| b + s - (b * s)),
+            Overlay => Self::blend_channel(HardLight, backdrop, source),
+            Darken => Self::blend(&backdrop, &source, |b, s| b.min(s)),
+            Lighten => Self::blend(&backdrop, &source, |b, s| b.max(s)),
+            ColorDodge => Self::blend(&backdrop, &source, |b, s| {
                 if b == 0.0 {
                     0.0
                 } else if s == 1.0 {
@@ -802,8 +818,8 @@ impl Color {
                 } else {
                     (1.0 as ColorFloat).min(b / (1.0 - s))
                 }
-            }
-            ColorBurn => {
+            }),
+            ColorBurn => Self::blend(&backdrop, &source, |b, s| {
                 if b == 1.0 {
                     1.0
                 } else if s == 0.0 {
@@ -811,15 +827,15 @@ impl Color {
                 } else {
                     1.0 - (1.0 as ColorFloat).min((1.0 - b) / s)
                 }
-            }
-            HardLight => {
+            }),
+            HardLight => Self::blend(&backdrop, &source, |b, s| {
                 if s <= 0.5 {
-                    Self::blend_channel(Multiply, b, 2.0 * s)
+                    2.0 * b * s
                 } else {
-                    Self::blend_channel(Screen, b, 2.0 * s - 1.0)
+                    1.0 - 2.0 * (1.0 - b) * (1.0 - s)
                 }
-            }
-            SoftLight => {
+            }),
+            SoftLight => Self::blend(&backdrop, &source, |b, s| {
                 if s <= 0.5 {
                     b - (1.0 - 2.0 * s) * b * (1.0 - b)
                 } else {
@@ -830,11 +846,20 @@ impl Color {
                     };
                     b + (2.0 * s - 1.0) * (d - b)
                 }
-            }
-            Difference => (b - s).abs(),
-            Exclusion => b + s - 2.0 * b * s,
+            }),
+            Difference => Self::blend(&backdrop, &source, |b, s| (b - s).abs()),
+            Exclusion => Self::blend(&backdrop, &source, |b, s| b + s - 2.0 * b * s),
             // non-separable blend modes
-            _ => s, // TODO placeholder
+            Hue => Self::set_lum(
+                Self::set_sat(source, Self::sat(backdrop)),
+                Self::lum(backdrop),
+            ),
+            Saturation => Self::set_lum(
+                Self::set_sat(backdrop, Self::sat(source)),
+                Self::lum(backdrop),
+            ),
+            Color => Self::set_lum(source, Self::lum(backdrop)),
+            Luminosity => Self::set_lum(backdrop, Self::lum(source)),
         }
     }
 }
