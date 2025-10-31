@@ -15,7 +15,7 @@ use crate::color::ColorFloat;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BlendMode {
-    /// Standard Porter-Duff over (equivalent to `Color::over`)
+    // separable blend modes
     Normal,
     Multiply,
     Screen,
@@ -28,6 +28,11 @@ pub enum BlendMode {
     SoftLight,
     Difference,
     Exclusion,
+    // non-separable blend modes
+    Hue,
+    Saturation,
+    Color,
+    Luminosity,
 }
 
 // stores sRGB under the hood, with lots of conversion funcs
@@ -189,7 +194,7 @@ impl Color {
         };
 
         // Encode back to sRGB u8 (your encoders already clamp)
-        Color::from_linear([cr, cg, cb, ca])
+        Self::from_linear([cr, cg, cb, ca])
     }
 
     // Faster (but slightly less accurate) "over" in sRGB space.
@@ -641,6 +646,130 @@ impl Color {
         }
     }
 
+    // helpers for non-separable blend modes
+    fn lum(c: [ColorFloat; 3]) -> ColorFloat {
+        let [r, g, b] = c;
+        0.3 * r + 0.59 * g + 0.11 * b
+    }
+
+    fn clip_color(c: [ColorFloat; 3]) -> [ColorFloat; 3] {
+        let [r, g, b] = c;
+        let l = Self::lum(c);
+        let n = r.min(g).min(b);
+        let x = r.max(g).max(b);
+        if n < 0.0 {
+            c.iter()
+                .map(|&v| l + (((v - l) * l) / (l - n)))
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap()
+        } else if x > 1.0 {
+            c.iter()
+                .map(|&v| l + (((v - l) * (1.0 - l)) / (x - l)))
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap()
+        } else {
+            c
+        }
+    }
+
+    fn set_lum(c: [ColorFloat; 3], l: ColorFloat) -> [ColorFloat; 3] {
+        let [r, g, b] = c;
+        let d = l - Self::lum(c);
+        Self::clip_color([r + d, g + d, b + d])
+    }
+
+    fn sat(c: [ColorFloat; 3]) -> ColorFloat {
+        let [r, g, b] = c;
+        r.max(g).max(b) - r.min(g).min(b)
+    }
+
+    fn set_sat(c: [ColorFloat; 3], s: ColorFloat) -> [ColorFloat; 3] {
+        let [r, g, b] = c;
+        let max: ColorFloat;
+        let max_ch: char;
+        let min: ColorFloat;
+        let min_ch: char;
+        let mid: ColorFloat;
+        let mid_ch: char;
+
+        if r >= g && r >= b {
+            max = r;
+            max_ch = 'r';
+
+            if g <= b {
+                min = g;
+                min_ch = 'g';
+                mid = b;
+                mid_ch = 'b';
+            } else {
+                min = b;
+                min_ch = 'b';
+                mid = g;
+                mid_ch = 'g';
+            }
+        } else if g >= r && g >= b {
+            max = g;
+            max_ch = 'g';
+            if r <= b {
+                min = r;
+                min_ch = 'r';
+                mid = b;
+                mid_ch = 'b';
+            } else {
+                min = b;
+                min_ch = 'b';
+                mid = r;
+                mid_ch = 'r';
+            }
+        } else {
+            max = b;
+            max_ch = 'b';
+            if r <= g {
+                min = r;
+                min_ch = 'r';
+                mid = g;
+                mid_ch = 'g';
+            } else {
+                min = g;
+                min_ch = 'g';
+                mid = r;
+                mid_ch = 'r';
+            }
+        }
+
+        let chroma = max - min;
+        if chroma == 0.0 {
+            return [0.0, 0.0, 0.0];
+        }
+
+        let scale = s / chroma;
+
+        let new_max = mid + (max - mid) * scale;
+        let new_min = mid - (mid - min) * scale;
+        let new_mid = mid;
+
+        let (mut out_r, mut out_g, mut out_b) = (0.0, 0.0, 0.0);
+        match max_ch {
+            'r' => out_r = new_max,
+            'g' => out_g = new_max,
+            _ => out_b = new_max,
+        }
+        match min_ch {
+            'r' => out_r = new_min,
+            'g' => out_g = new_min,
+            _ => out_b = new_min,
+        }
+        match mid_ch {
+            'r' => out_r = new_mid,
+            'g' => out_g = new_mid,
+            _ => out_b = new_mid,
+        }
+
+        [out_r, out_g, out_b]
+    }
+
     #[inline]
     fn blend_channel(mode: BlendMode, b: ColorFloat, s: ColorFloat) -> ColorFloat {
         use BlendMode::*;
@@ -694,6 +823,7 @@ impl Color {
             Difference => (b - s).abs(),
             Exclusion => b + s - 2.0 * b * s,
             // non-separable blend modes
+            _ => s, // TODO placeholder
         }
     }
 }
