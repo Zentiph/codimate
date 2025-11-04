@@ -5,8 +5,8 @@
 [![GitHub License](https://img.shields.io/github/license/zentiph/codimate?style=flat-square&labelColor=0f0f0f)](https://github.com/Zentiph/codimate/blob/master/LICENSE)
 [![Contributors](https://img.shields.io/github/contributors/zentiph/codimate?style=flat-square&labelColor=0f0f0f)](../../graphs/contributors)
 <br/>
-[![GitHub commit activity](https://img.shields.io/github/commit-activity/t/zentiph/codimate?style=flat-square&labelColor=0f0f0f)](https://github.com/zentiph/codimate/commits/main)
-[![Last Commit](https://img.shields.io/github/last-commit/zentiph/codimate?style=flat-square&labelColor=0f0f0f)](https://github.com/zentiph/codimate/commits/main)
+[![GitHub commit activity](https://img.shields.io/github/commit-activity/t/zentiph/codimate?style=flat-square&labelColor=0f0f0f)](https://github.com/zentiph/codimate/commits/master)
+[![Last Commit](https://img.shields.io/github/last-commit/zentiph/codimate?style=flat-square&labelColor=0f0f0f)](https://github.com/zentiph/codimate/commits/master)
 <br/>
 ![Linter](https://img.shields.io/badge/linter-clippy-D34516?style=flat-square&labelColor=0f0f0f)
 ![Formatter](https://img.shields.io/badge/style-rust--analyzer-D34516?style=flat-square&labelColor=0f0f0f)
