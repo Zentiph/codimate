@@ -114,14 +114,21 @@ pub enum BlendMode {
     Luminosity,
 }
 
-// stores sRGB under the hood, with lots of conversion funcs
+/// A representation of a color in sRGB u8.
+///
+/// # Fields
+///
+/// - `r` (`u8`) - The red value.
+/// - `g` (`u8`) - The green value.
+/// - `b` (`u8`) - The blue value.
+/// - `a` (`u8`) - The alpha value.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Color {
-    pub r: u8,
-    pub g: u8,
-    pub b: u8,
-    pub a: u8,
+    r: u8,
+    g: u8,
+    b: u8,
+    a: u8,
 }
 
 impl Color {
@@ -132,13 +139,57 @@ impl Color {
     pub const BLUE: Self = Self::new(0, 0, 255, 255);
     pub const WHITE: Self = Self::new(255, 255, 255, 255);
 
+    /// Create a new color from u8 sRGB values.
+    ///
+    /// # Arguments
+    ///
+    /// - `r` (`u8`) - The red value.
+    /// - `g` (`u8`) - The green value.
+    /// - `b` (`u8`) - The blue value.
+    /// - `a` (`u8`) - The alpha value.
+    ///
+    /// # Returns
+    ///
+    /// - `Self` - A new color with the given red, green, blue,
+    ///   and alpha values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let green_yellow = Color::new(173, 255, 47, 255);
+    /// ```
     #[must_use]
     #[inline]
     pub const fn new(r: u8, g: u8, b: u8, a: u8) -> Self {
         Self { r, g, b, a }
     }
 
-    // Linear interpolation in sRGB space; use `lerp_linear` for perceptual correctness.
+    /// Linear interpolation between two colors in sRGB space.
+    ///
+    /// Use `Color::lerp_linear` for perceptual correctness.
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The color to lerp from.
+    /// - `other` (`Color`) - The color to lerp to.
+    /// - `t` (`ColorFloat`) - The interpolation value.
+    ///   This value will be clamped between and including 0.0 and 1.0.
+    ///
+    /// # Returns
+    ///
+    /// - `Color` - The interpolated color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let dark_gray = Color::new(169, 169, 169, 255);
+    /// let steel_blue = Color::new(70, 130, 180, 255);
+    /// let interpolated = dark_gray.lerp(steel_blue);
+    /// ```
     #[must_use]
     #[inline]
     pub fn lerp(self, other: Color, t: ColorFloat) -> Color {
@@ -157,7 +208,28 @@ impl Color {
         }
     }
 
-    // Linear interp in linear space
+    /// Linear interpolation between two colors in linear space.
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The color to lerp from.
+    /// - `other` (`Color`) - The color to lerp to.
+    /// - `t` (`ColorFloat`) - The interpolation value.
+    ///   This value will be clamped between and including 0.0 and 1.0.
+    ///
+    /// # Returns
+    ///
+    /// - `Color` - The interpolated color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let dark_slate_gray = Color::new(47, 79, 79, 255);
+    /// let misty_rose = Color::new(255, 228, 225, 255);
+    /// let interpolated = dark_slate_gray.lerp_linear(misty_rose);
+    /// ```
     #[must_use]
     #[inline]
     pub fn lerp_linear(self, other: Color, t: ColorFloat) -> Color {
@@ -174,6 +246,28 @@ impl Color {
         ])
     }
 
+    /// Linear interpolation between two colors in OKLCH space.
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The color to lerp from.
+    /// - `other` (`Color`) - The color to lerp to.
+    /// - `t` (`ColorFloat`) - The interpolation value.
+    ///   This value will be clamped between and including 0.0 and 1.0.
+    ///
+    /// # Returns
+    ///
+    /// - `Color` - The interpolated color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let magenta = Color::new(255, 0, 255, 255);
+    /// let green_yellow = Color::new(173, 255, 47, 255);
+    /// let interpolated = magenta.lerp_oklch(green_yellow);
+    /// ```
     #[must_use]
     #[inline]
     pub fn lerp_oklch(self, other: Color, t: ColorFloat) -> Color {
@@ -218,9 +312,30 @@ impl Color {
             .with_alpha((a.clamp(0.0, 1.0) * 255.0 + 0.5).floor() as u8)
     }
 
-    // Porter-Duff "over" in linear space
-    // for speed over accuracy, use `over_srgb_fast`
-    // https://keithp.com/~keithp/porterduff/p253-porter.pdf
+    /// Perform a Porter-Duff over operation in linear space.
+    ///
+    /// For speed over accuracy, use `Color::over_srgb_fast`
+    ///
+    /// Source: https://keithp.com/~keithp/porterduff/p253-porter.pdf
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The source color.
+    /// - `bg` (`Color`) - The backdrop color.
+    ///
+    /// # Returns
+    ///
+    /// - `Color` - The blended color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let seashell = Color::new(255, 245, 238, 255);
+    /// let rosy_brown = Color::new(188, 143, 143, 255);
+    /// let blended = seashell.over(rosy_brown);
+    /// ```
     #[must_use]
     #[inline]
     pub fn over(self, bg: Color) -> Color {
@@ -242,8 +357,29 @@ impl Color {
         Color::from_linear([out_r, out_g, out_b, out_a])
     }
 
-    // Blend this color over a bg using the given blend mode
-    // Math done in linear space, output encoded back to sRGB with straight alpha
+    /// Blend a color over a backdrop using a blend mode.
+    ///
+    /// The math is calculated in linear space.
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The source color.
+    /// - `bg` (`Color`) - The backdrop color.
+    /// - `mode` (`BlendMode`) - The blend mode to use.
+    ///
+    /// # Returns
+    ///
+    /// - `Color` - The blended color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::{BlendMode, Color};
+    ///
+    /// let light_slate_gray = Color::new(119, 136, 153, 255);
+    /// let deep_pink = Color::new(255, 20, 147, 255);
+    /// let blended = light_slate_gray.blend_over(deep_pink, BlendMode::Multiply);
+    /// ```
     #[must_use]
     #[inline]
     pub fn blend_over(self, bg: Color, mode: BlendMode) -> Color {
@@ -278,7 +414,28 @@ impl Color {
         Self::from_linear([cr, cg, cb, ca])
     }
 
-    // Faster (but slightly less accurate) "over" in sRGB space.
+    /// A faster but slightly less accurate Porter-Duff over in sRGB space.
+    ///
+    /// For a slower but more accurate result, use `Color::over`.
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The source color.
+    /// - `mut dst` (`Color`) - The backdrop color.
+    ///
+    /// # Returns
+    ///
+    /// - `Color` - The blended color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let tan = Color::new(210, 180, 140, 255);
+    /// let burly_wood = Color::new(222, 184, 135, 255);
+    /// let blended = tan.over_srgb_fast(burly_wood);
+    /// ```
     #[must_use]
     #[inline]
     pub fn over_srgb_fast(self, mut dst: Color) -> Color {
@@ -312,6 +469,26 @@ impl Color {
         dst
     }
 
+    /// Calculate the WCAG WG relative luminance of a color in linear space.
+    ///
+    /// Source: https://www.w3.org/WAI/GL/wiki/Relative_luminance
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The color to calculate the relative luminance of.
+    ///
+    /// # Returns
+    ///
+    /// - `ColorFloat` - The relative luminance of the color.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let khaki = Color::new(240, 230, 140, 255);
+    /// let lum = khaki.relative_luminance();
+    /// ```
     #[must_use]
     #[inline]
     pub fn relative_luminance(self) -> ColorFloat {
@@ -319,6 +496,28 @@ impl Color {
         0.2126 * r + 0.7152 * g + 0.0722 * b
     }
 
+    /// Calculate the W3 contrast ratio between two colors.
+    ///
+    /// Source: https://www.w3.org/TR/WCAG20/#contrast-ratiodef
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The first color.
+    /// - `other` (`Color`) - The second color.
+    ///
+    /// # Returns
+    ///
+    /// - `ColorFloat` - The contrast ratio between the two colors.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let pale_green = Color::new(152, 251, 152, 255);
+    /// let yellow = Color::new(255, 255, 0, 255);
+    /// let contrast = pale_green.contrast_ratio(yellow);
+    /// ```
     #[must_use]
     #[inline]
     pub fn contrast_ratio(self, other: Color) -> ColorFloat {
@@ -330,6 +529,25 @@ impl Color {
         (l1 + 0.05) / (l2 + 0.05)
     }
 
+    /// Lighten a color in 0.0-1.0 HSL space (by raising its luminance).
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The color to lighten.
+    /// - `amt` (`ColorFloat`) - The amount to raise the luminance by.
+    ///
+    /// # Returns
+    ///
+    /// - `Self` - The lightened color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let violet = Color::new(238, 130, 238, 255);
+    /// let lightened = violet.lighten_hsl(0.5);
+    /// ```
     #[must_use]
     #[inline]
     pub fn lighten_hsl(self, amt: ColorFloat) -> Self {
@@ -338,6 +556,25 @@ impl Color {
         Self::from_hsl([h, s, l])
     }
 
+    /// Darken a color in 0.0-1.0 HSL space (by lowering its luminance).
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The color to darken.
+    /// - `amt` (`ColorFloat`) - The amount to lower the luminance by.
+    ///
+    /// # Returns
+    ///
+    /// - `Self` - The darkened color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let dark_sea_green = Color::new(143, 188, 143, 255);
+    /// let darkened = dark_sea_green.darken_hsl(0.5);
+    /// ```
     #[must_use]
     #[inline]
     pub fn darken_hsl(self, amt: ColorFloat) -> Self {
@@ -346,6 +583,25 @@ impl Color {
         Self::from_hsl([h, s, l])
     }
 
+    /// Lighten a color in linear space by raising its R, G, and B values.
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The color to lighten.
+    /// - `amt` (`ColorFloat`) - The amount to raise the R, G, and B values by.
+    ///
+    /// # Returns
+    ///
+    /// - `Self` - The lightened color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let navy = Color::new(0, 0, 128, 255);
+    /// let lightened = navy.lighten_linear();
+    /// ```
     #[must_use]
     #[inline]
     pub fn lighten_linear(self, amt: ColorFloat) -> Self {
@@ -356,6 +612,25 @@ impl Color {
         Self::from_linear(c)
     }
 
+    /// Darken a color in linear space by lowering its R, G, and B values.
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The color to darken.
+    /// - `amt` (`ColorFloat`) - The amount to lower the R, G, and B values by.
+    ///
+    /// # Returns
+    ///
+    /// - `Self` - The darkened color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let lemon_chiffon = Color::new(255, 250, 205, 255);
+    /// let darkened = lemon_chiffon.darken_linear();
+    /// ```
     #[must_use]
     #[inline]
     pub fn darken_linear(self, amt: ColorFloat) -> Self {
@@ -366,6 +641,25 @@ impl Color {
         Self::from_linear(c)
     }
 
+    /// Copy a color but with a different alpha.
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The color to get with a new alpha.
+    /// - `a` (`u8`) - The new alpha.
+    ///
+    /// # Returns
+    ///
+    /// - `Self` - The color with a new alpha.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let green = Color::new(0, 128, 0, 255);
+    /// let translucent_green = green.with_alpha(128);
+    /// ```
     #[must_use]
     #[inline]
     pub const fn with_alpha(self, a: u8) -> Self {
@@ -377,6 +671,23 @@ impl Color {
         }
     }
 
+    /// Create a color from an RGB array. The alpha defaults to 255.
+    ///
+    /// # Arguments
+    ///
+    /// - `rgb` (`[u8; 3]`) - The RGB array.
+    ///
+    /// # Returns
+    ///
+    /// - `Self` - The color with the given RGB value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let light_gray = Color::from_rgb([211, 211, 211]);
+    /// ```
     #[must_use]
     #[inline]
     pub const fn from_rgb(rgb: [u8; 3]) -> Self {
@@ -388,12 +699,47 @@ impl Color {
         }
     }
 
+    /// Get an RGB representation of a color.
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The color to get the RGB representation of.
+    ///
+    /// # Returns
+    ///
+    /// - `[u8; 3]` - An RGB representation of the color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let lime_green = Color::new(50, 205, 50, 255);
+    /// let [r, g, b] = lime_green.into_rgb();
+    /// ```
     #[must_use]
     #[inline]
     pub const fn into_rgb(self) -> [u8; 3] {
         [self.r, self.g, self.b]
     }
 
+    /// Create a color from an RGBA array.
+    ///
+    /// # Arguments
+    ///
+    /// - `rgba` (`[u8; 4]`) - The RGBA array.
+    ///
+    /// # Returns
+    ///
+    /// - `Self` - The color with the given RGBA value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let translucent_silver = Color::from_rgba([192, 192, 192, 128]);
+    /// ```
     #[must_use]
     #[inline]
     pub const fn from_rgba(rgba: [u8; 4]) -> Self {
@@ -405,12 +751,48 @@ impl Color {
         }
     }
 
+    /// Get an RGBA representation of a color.
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The color to get the RGBA representation of.
+    ///
+    /// # Returns
+    ///
+    /// - `[u8; 4]` - An RGBA representation of the color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let translucent_olive_drab = Color::new(107, 142, 35, 128);
+    /// let [r, g, b, a] = translucent_olive_drab.into_rgba();
+    /// ```
     #[must_use]
     #[inline]
     pub const fn into_rgba(self) -> [u8; 4] {
         [self.r, self.g, self.b, self.a]
     }
 
+    /// Get a 6 character hex representation of a color (#RRGGBB).
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The color to get the hex6 representation of.
+    ///
+    /// # Returns
+    ///
+    /// - `alloc::string::String` - A hex6 representation of the color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let light_sky_blue = Color::new(135, 206, 250, 255);
+    /// let hex6 = light_sky_blue.into_hex6();
+    /// ```
     #[must_use]
     #[inline]
     #[cfg(feature = "alloc")]
@@ -418,6 +800,24 @@ impl Color {
         format!("{:02x}{:02x}{:02x}", self.r, self.g, self.b)
     }
 
+    /// Get an 8 character hex representation of a color (#RRGGBBAA).
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The color to get the hex8 representation of.
+    ///
+    /// # Returns
+    ///
+    /// - `alloc::string::String` - A hex8 representation of the color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let orange_red = Color::new(255, 69, 0, 255);
+    /// let hex8 = orange_red.into_hex8();
+    /// ```
     #[must_use]
     #[inline]
     #[cfg(feature = "alloc")]
@@ -425,6 +825,22 @@ impl Color {
         format!("{:02x}{:02x}{:02x}{:02x}", self.r, self.g, self.b, self.a)
     }
 
+    /// Create a color from an HSL array.
+    ///
+    /// # Arguments
+    ///
+    /// - `hsl` (`[ColorFloat; 3]`) - The HSL array.
+    ///
+    /// # Returns
+    ///
+    /// - `Self` - The color with the given HSL value.
+    ///
+    /// # Examples
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let light_salmon = Color::from_hsl([17.143, 100.0, 73.922])
+    /// ```
     #[must_use]
     #[inline]
     pub fn from_hsl(hsl: [ColorFloat; 3]) -> Self {
@@ -452,6 +868,23 @@ impl Color {
         }
     }
 
+    /// Create a color from an HSL array.
+    ///
+    /// # Arguments
+    ///
+    /// - `hsl` (`[ColorFloat; 3]`) - The HSL array.
+    ///
+    /// # Returns
+    ///
+    /// - `Self` - The color with the given HSL value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let translucent_chocolate = Color::from_hsla([25.0, 75.0, 47.059, 0.5]);
+    /// ```
     #[must_use]
     #[inline]
     pub fn from_hsla(hsla: [ColorFloat; 4]) -> Self {
@@ -483,6 +916,24 @@ impl Color {
         }
     }
 
+    /// Get an HSL representation of a color.
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The color to get the HSL representation of.
+    ///
+    /// # Returns
+    ///
+    /// - `[ColorFloat; 3]` - The HSL representation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let fire_brick = Color::new(178, 34, 34, 255);
+    /// let [h, s, l] = fire_brick.into_hsl();
+    /// ```
     #[must_use]
     #[inline]
     pub fn into_hsl(self) -> [ColorFloat; 3] {
@@ -516,9 +967,27 @@ impl Color {
             delta / (1.0 - (2.0 * l - 1.0).abs())
         };
 
-        [h, s, l]
+        [h, s * 100.0, l * 100.0]
     }
 
+    /// Get an HSLA representation of a color.
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The color to get the HSLA representation of.
+    ///
+    /// # Returns
+    ///
+    /// - `[ColorFloat; 4]` - The HSLA representation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let translucent_light_goldenrod_yellow = Color::new(250, 250, 210, 128);
+    /// let [h, s, l, a] = into_hsla(translucent_light_goldenrod_yellow);
+    /// ```
     #[must_use]
     #[inline]
     pub fn into_hsla(self) -> [ColorFloat; 4] {
@@ -552,10 +1021,26 @@ impl Color {
             delta / (1.0 - (2.0 * l - 1.0).abs())
         };
 
-        [h, s, l, (self.a as ColorFloat) / 255.0]
+        [h, s * 100.0, l * 100.0, (self.a as ColorFloat) / 255.0]
     }
 
-    // encode linear light -> sRGB (D65, IEC 61966-2-1)
+    /// Create an encoded sRGB color from linear space (D65, IEC 61966-2-1).
+    ///
+    /// # Arguments
+    ///
+    /// - `lin` (`[ColorFloat; 4]`) - The linear RGB array.
+    ///
+    /// # Returns
+    ///
+    /// - `Self` - The new color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let light_yellow = Color::from_linear([1.0, 1.0, 0.745404]);
+    /// ```
     #[must_use]
     #[inline]
     pub fn from_linear(lin: [ColorFloat; 4]) -> Self {
@@ -570,7 +1055,24 @@ impl Color {
         }
     }
 
-    // decode sRGB -> linear light (D65, IEC 61966-2-1)
+    /// Decode an sRGB color into linear space (D65, IEC 61966-2-1).
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The color to decode to linear space.
+    ///
+    /// # Returns
+    ///
+    /// - `[ColorFloat; 4]` - The array of linear values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let light_salmon = Color::new(255, 160, 122, 255);
+    /// let [lr, lg, lb, la] = light_salmon.into_linear();
+    /// ```
     #[must_use]
     #[inline]
     pub fn into_linear(self) -> [ColorFloat; 4] {
@@ -582,6 +1084,23 @@ impl Color {
         ]
     }
 
+    /// Create a color from an OKLAB array.
+    ///
+    /// # Arguments
+    ///
+    /// - `lab` (`[ColorFloat; 3]`) - The OKLAB array.
+    ///
+    /// # Returns
+    ///
+    /// - `Self` - The new color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let yellow_green = Color::from_oklab([0.784852, -0.109642, 0.147442]);
+    /// ```
     #[must_use]
     #[inline]
     pub fn from_oklab(lab: [ColorFloat; 3]) -> Self {
@@ -603,6 +1122,24 @@ impl Color {
         ])
     }
 
+    /// Get an OKLAB representation of a color.
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The color to get the OKLAB representation of.
+    ///
+    /// # Returns
+    ///
+    /// - `[ColorFloat; 3]` - The OKLAB representation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let navajo_white = Color::new(255, 222, 173, 255);
+    /// let [l, a, b] = navajo_white.into_oklab();
+    /// ```
     #[must_use]
     #[inline]
     pub fn into_oklab(self) -> [ColorFloat; 3] {
@@ -621,6 +1158,23 @@ impl Color {
         ]
     }
 
+    /// Create a color from an OKLCH array.
+    ///
+    /// # Arguments
+    ///
+    /// - `lch` (`[ColorFloat; 3]`) - The OKLCH array.
+    ///
+    /// # Returns
+    ///
+    /// - `Self` - The new color.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let peru = Color::from_oklch([0.678193, 0.122749, 62.181584]);
+    /// ```
     #[must_use]
     #[inline]
     pub fn from_oklch(lch: [ColorFloat; 3]) -> Self {
@@ -661,16 +1215,28 @@ impl Color {
         Self::from_oklab(Self::oklch_to_oklab([lch[0], lo, lch[2]]))
     }
 
+    /// Get an OKLCH representation of a color.
+    ///
+    /// # Arguments
+    ///
+    /// - `self` (`Color`) - The color to get an OKLCH representation of.
+    ///
+    /// # Returns
+    ///
+    /// - `[ColorFloat; 3]` - The OKLCH representation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use codimate::color::Color;
+    ///
+    /// let floral_white = Color::new(255, 250, 240, 255);
+    /// let [l, c, h] = floral_white.into_oklch();
+    /// ```
     #[must_use]
     #[inline]
     pub fn into_oklch(self) -> [ColorFloat; 3] {
-        Self::oklab_to_oklch(self.into_oklab())
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn oklab_to_oklch(ok: [ColorFloat; 3]) -> [ColorFloat; 3] {
-        let (l, a, b) = (ok[0], ok[1], ok[2]);
+        let [l, a, b] = self.into_oklab();
         let c = (a * a + b * b).sqrt();
         let mut h = b.atan2(a).to_degrees();
         if h < 0.0 {
@@ -679,17 +1245,18 @@ impl Color {
         [l, c, h]
     }
 
+    // --- private methods --- //
+
+    /// Convert an OKLCH array to an OKLAB array.
     #[must_use]
     #[inline]
-    pub fn oklch_to_oklab(lch: [ColorFloat; 3]) -> [ColorFloat; 3] {
+    fn oklch_to_oklab(lch: [ColorFloat; 3]) -> [ColorFloat; 3] {
         let (l, c, h) = (lch[0], lch[1], lch[2]);
         let h = h.to_radians();
         let a = c * h.cos();
         let b = c * h.sin();
         [l, a, b]
     }
-
-    // --- private methods --- //
 
     /// Decode an 8 bit sRGB value into a linear float using a lookup table.
     #[cfg(feature = "srgb_lut")]
@@ -729,7 +1296,9 @@ impl Color {
         }
     }
 
-    // helpers for non-separable blend modes
+    // helpers for non-separable blend modes as defined by the W3:
+    // https://www.w3.org/TR/compositing-1/#blendingnonseparable
+
     #[inline]
     fn lum(c: [ColorFloat; 3]) -> ColorFloat {
         let [r, g, b] = c;
