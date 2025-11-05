@@ -1,11 +1,5 @@
 #![allow(dead_code)]
 
-// Special note from Gavin: if you call it "colour", you are WRONG,
-// which is why we will have ZERO cross-compatibility with that name.
-// you will be FORCED to type "color" until you realize that it is superior.
-
-// TODO docs
-
 use std::fmt::{self};
 
 #[cfg(feature = "alloc")]
